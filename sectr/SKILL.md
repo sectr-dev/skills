@@ -115,16 +115,6 @@ Authenticate the CLI using `sectr auth login` so all future commands need no fla
 sectr auth login
 ```
 
-#### Giving your coding agent the Sectr skill
-
-If you build with a coding agent (Claude Code, Codex, Cursor, and others), install the `sectr` agent skill: these docs, packaged so your agent can look up the CLI, SDK and API while it works on your Sectr project.
-
-```sh
-npx skills add sectr-dev/skills
-```
-
-That installs it into the current project. Add `-g` to install it for your user instead, and `--agent <name>` to pick an agent (repeat it for several, e.g. `--agent claude-code --agent codex`). `npx skills update` picks up later docs changes.
-
 ### Your first agent
 
 Now that `sectr` CLI is installed and authenticated, let's get your first agent up and running: a customer support agent that can look up orders and issue refunds with admin approval.
