@@ -4,8 +4,8 @@ description: >-
   Build, run locally, and deploy AI agents on Sectr, a PaaS for hosting AI
   agents. Covers the sectr CLI (init, dev, send, tail, deploy, secrets, auth);
   the sectr Python SDK (AgentApp, SessionContext, events, tools, and the
-  adapters for the OpenAI Agents SDK, LangGraph, Pydantic AI and the Claude
-  Agent SDK); human-in-the-loop tool approvals; connecting a frontend over AG-UI
+  adapters for the OpenAI Agents SDK, LangGraph and Pydantic AI);
+  human-in-the-loop tool approvals; connecting a frontend over AG-UI
   (CopilotKit); and the public HTTP API (sessions, SSE journal streaming,
   approvals, AG-UI endpoints, limits). Use when writing or debugging a Sectr
   agent, integrating the sectr SDK, deploying to Sectr Cloud, putting a chat UI
@@ -20,8 +20,8 @@ description: >-
 Sectr is a PaaS for hosting AI agents: develop with any agent framework,
 debug locally with `sectr dev`, and deploy to Sectr Cloud with
 `sectr deploy`. Agents are written with the OpenAI Agents SDK, LangGraph,
-Pydantic AI, the Claude Agent SDK, or plain Python: the `sectr` SDK's
-adapters run each framework's agent on the platform. Every deployed route
+Pydantic AI, or no framework at all (see "Supported agent frameworks"
+below). Every deployed route
 is also an AG-UI endpoint, so a CopilotKit chat (or any AG-UI client)
 connects to it directly. Deployed apps run under concurrency and rate
 limits (`references/api/limits.md`).
@@ -71,8 +71,8 @@ Never assume it's already installed.
      which you can't answer. Add `--frontend copilotkit` only if the user
      wants a chat UI.
    - If the user has an existing Python agent, add the SDK for its
-     framework instead, e.g. `uv add "sectr[langgraph]"` (see
-     `references/getting-started/` and `references/sdk/adapters.md`).
+     framework instead: the `uv add` command in "Supported agent
+     frameworks" below.
 4. **Logged in, only before a cloud command** (`sectr deploy`,
    `sectr secrets`, `sectr send --cloud`; local `sectr dev` doesn't need
    it). Run `sectr auth whoami`. If it fails or prints
@@ -86,6 +86,26 @@ Never assume it's already installed.
    The key is a credential: don't ask the user to paste it into the
    conversation, and don't pass it with `--key` yourself. When they say
    they're done, run `sectr auth whoami` again.
+
+## Supported agent frameworks
+
+Sectr runs agents written with these. Each framework's agent is served
+through an adapter from the `sectr` SDK:
+
+| Framework | Serve it with | Add to a project |
+| --- | --- | --- |
+| OpenAI Agents SDK | `app.add_route("/chat", openai_agents(agent))`, from `sectr.adapters.openai_agents` | `uv add "sectr[openai-agents]"` |
+| LangGraph | `app.add_route("/chat", langgraph(graph))`, from `sectr.adapters.langgraph` | `uv add "sectr[langgraph]"` |
+| Pydantic AI | `app.add_route("/chat", pydantic_ai(agent))`, from `sectr.adapters.pydantic_ai` | `uv add "sectr[pydantic-ai]"` plus a model extra, e.g. `"pydantic-ai-slim[openai]"` |
+| No framework | a handler of your own, `@app.agent_route("/chat")`, with tools from `sectr.tools` | `uv add sectr` |
+
+Each adapter supports most, not all, of its framework: check the
+framework's section in `references/sdk/adapters.md` before relying on a
+feature (subagents, structured output, checkpointers and so on).
+
+No other framework has an adapter, including the Claude Agent SDK (on the backlog)
+and multi-agent frameworks like CrewAI or AutoGen. If the user's agent uses
+one, tell them rather than improvising an integration.
 
 ## Conceptual overview: how a Sectr app fits together
 
@@ -249,32 +269,91 @@ either its code or the deployment's config says so.
 
 ### Marking as gated in code
 
-Use your framework's own way of marking a tool as needing approval, or
-`sectr.tools` for framework-free code:
+Gate a tool where it's defined. Which way depends on how the agent is
+written:
 
-```python
-@tool(needs_approval=True)          # framework-free (sectr.tools)
-async def refund(order_id: str) -> str: ...
-```
-
-```python
-@function_tool(needs_approval=True)  # openai-agents native HITL
-async def refund(order_id: str) -> str: ...
-```
-
-```python
-Tool(refund, requires_approval=True)  # pydantic-ai native deferred tools
-```
-
-On LangGraph, mark the tool with `sectr.tools.tool` and convert it with
-`as_langgraph_tool`, or gate any tool, MCP tools included, with LangChain's
-`HumanInTheLoopMiddleware` on `create_agent` or with
-`as_langgraph_tool(tool, needs_approval=True)`: Sectr pauses those calls
-itself — see [frameworks without native approval](https://docs.sectr.dev/guides/approvals/#frameworks-without-native-approval-langgraph).
+- **OpenAI Agents SDK or Pydantic AI: use the framework's own approval
+  flag.** Sectr's adapter turns the framework's approval request into a
+  Sectr pause and resumes the framework with the decision, so the tool stays
+  ordinary framework code. These adapters read the framework's flag, not
+  `sectr.tools`.
+- **LangGraph: use one of the options below, not LangGraph's
+  `interrupt()`.** `interrupt()` can't be resumed without a checkpointer, so
+  it fails on Sectr.
+- **No framework: use `sectr.tools`.**
 
 A tool inside a subagent (another agent your agent runs from a tool) can't
 be gated: gate the subagent tool itself, and approving it runs the whole
 subagent. See [subagents](references/sdk/adapters.md#subagents).
+
+#### OpenAI Agents SDK
+
+```python
+from agents import function_tool
+
+@function_tool(needs_approval=True)
+async def refund(order_id: str) -> str: ...
+```
+
+#### Pydantic AI
+
+```python
+from pydantic_ai import Agent, Tool
+
+agent = Agent(model, tools=[lookup_order, Tool(refund, requires_approval=True)])
+```
+
+#### LangGraph
+
+Any of these, and they can be mixed:
+
+- A Sectr tool, converted for a `ToolNode` or `create_agent`:
+
+  ```python
+  from sectr.adapters.langgraph import as_langgraph_tool
+  from sectr.tools import tool
+
+  @tool(needs_approval=True)
+  async def refund(order_id: str) -> str:
+      """Refund an order."""
+      ...
+
+  tools = [as_langgraph_tool(refund)]
+  ```
+
+- Any LangChain tool (a `@tool`, an MCP tool, a community tool), gated as
+  it's converted: `as_langgraph_tool(some_tool, needs_approval=True)`.
+
+- On `create_agent`, LangChain's own `HumanInTheLoopMiddleware`. Each
+  `interrupt_on` entry must allow both approve and reject (`True` does):
+
+  ```python
+  from langchain.agents import create_agent
+  from langchain.agents.middleware import HumanInTheLoopMiddleware
+
+  graph = create_agent(
+      model,
+      tools=tools,
+      middleware=[HumanInTheLoopMiddleware(interrupt_on={"refund": True})],
+  )
+  ```
+
+Sectr pauses all of these itself — see
+[frameworks without native approval](https://docs.sectr.dev/guides/approvals/#frameworks-without-native-approval-langgraph).
+
+#### No framework
+
+A handler written directly against the SDK (`@app.agent_route`) gates its
+tools with [`sectr.tools`](references/sdk/tools.md):
+
+```python
+from sectr.tools import tool
+
+@tool(needs_approval=True)
+async def refund(order_id: str) -> str:
+    """Refund an order."""
+    ...
+```
 
 ### Marking as gated in deployment config
 
@@ -311,7 +390,7 @@ Deeper material lives in `references/`, one file per docs page:
 | **Using LangGraph**: Serve a LangGraph agent on Sectr — streaming, approvals and durable sessions for your graph, with no checkpointer to run. | references/getting-started/langgraph.md |
 | **Using Pydantic AI**: Serve a Pydantic AI agent on Sectr — streaming, native tool approvals and durable sessions, resumed from the journal alone. | references/getting-started/pydantic-ai.md |
 | **Compaction**: Keep long-running conversations inside the context window — TRANSCRIPT_COMPACTED and the positional fold. | references/guides/compaction.md |
-| **Framework adapters**: OpenAI Agents SDK, LangGraph, Pydantic AI, and Claude Agent SDK on Sectr. | references/guides/framework-adapters.md |
+| **Framework adapters**: OpenAI Agents SDK, LangGraph and Pydantic AI on Sectr — what an adapter does, and what each supports. | references/guides/framework-adapters.md |
 | **Local dev**: The sectr dev loop — local engine, gateway, dashboard, send/tail. | references/guides/local-dev.md |
 | **Secrets**: Write-only secrets for deployed agents — set, list, remove, and how they reach your code. | references/guides/secrets.md |
 | **AG-UI endpoint**: Every deployed route is an AG-UI 1.0 endpoint — run a turn with POST, reconnect with GET. Requests, events, approvals, auth and errors. | references/api/ag-ui.md |

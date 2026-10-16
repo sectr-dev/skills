@@ -351,7 +351,3 @@ run, because your own code starts it or handles what it returns:
   turn's `ERROR` is `langgraph_unmatched_approval` instead of
   `subagent_gated_tool`. The same happens if a task started before the turn,
   such as a background worker, runs the subagent.
-
-## Claude Agent SDK
-
-> **🚧 Under Construction 🚧**
