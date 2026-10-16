@@ -87,33 +87,7 @@ Never assume it's already installed.
    conversation, and don't pass it with `--key` yourself. When they say
    they're done, run `sectr auth whoami` again.
 
-The sections below explain each step in more detail.
-
 ## Getting started
-
-### Setting Up Sectr for Development
-
-Developing agents requires the **`sectr`** CLI to be installed on your dev machine, to be able to run agents locally and deploy them to Sectr Cloud. Your agent itself only needs to depend on and import the **`sectr` Python SDK**.
-
-#### Installing the `sectr` CLI
-
-One command, no runtime dependencies:
-
-```sh
-curl -fsSL https://sectr.dev/install.sh | sh
-```
-
-Verify it with `sectr --version`.
-
-#### Authenticating the `sectr` CLI
-
-All cloud commands (`sectr deploy`, `sectr secrets`, etc.) authenticate with a **platform API key** (`skp_…`).
-To get one, sign in at [app.sectr.dev](https://app.sectr.dev) with GitHub or Google, then click **Create CLI key** in the Getting-started checklist (or in Settings → API keys). The key is shown only once, so copy it right away.
-Authenticate the CLI using `sectr auth login` so all future commands need no flags, entering your platform key when prompted:
-
-```sh
-sectr auth login
-```
 
 ### Your first agent
 
