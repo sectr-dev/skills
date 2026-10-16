@@ -103,10 +103,6 @@ Each adapter supports most, not all, of its framework: check the
 framework's section in `references/sdk/adapters.md` before relying on a
 feature (subagents, structured output, checkpointers and so on).
 
-No other framework has an adapter, including the Claude Agent SDK (on the backlog)
-and multi-agent frameworks like CrewAI or AutoGen. If the user's agent uses
-one, tell them rather than improvising an integration.
-
 ## Conceptual overview: how a Sectr app fits together
 
 This section walks through the example project that `sectr init` creates
