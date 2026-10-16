@@ -87,13 +87,11 @@ Never assume it's already installed.
    conversation, and don't pass it with `--key` yourself. When they say
    they're done, run `sectr auth whoami` again.
 
-## Getting started
-
-### Your first agent
+## Your first agent
 
 Now that `sectr` CLI is installed and authenticated, let's get your first agent up and running: a customer support agent that can look up orders and issue refunds with admin approval.
 
-#### Project Setup
+### Project Setup
 
 Scaffold a runnable project:
 
@@ -140,11 +138,11 @@ my-agent/
 └── README.md
 ```
 
-#### The agent
+### The agent
 
 Using Sectr is as easy as writing the agent code you are already familiar with, and then exposing it on a Sectr route. No special frameworks or code patterns are required.
 
-##### Agent defintions and routes
+#### Agent defintions and routes
 
 Let's take quick look at `app.py`, where we define the agent and its Sectr route:
 
@@ -181,7 +179,7 @@ Notice what's *absent*: no session handling, no streaming
 plumbing, no state management, no Postgres queries to persist conversations.
 Sectr provides that, so you can focus on the AI.
 
-##### Tool Defintions
+#### Tool Defintions
 
 The tools are vanilla OpenAI Agents SDK tools, defined in `tools.py`:
 
@@ -199,7 +197,7 @@ async def refund(order_id: str) -> str:
 
 Note that the `refund` tool is marked with `needs_approval=True`. Sectr automatically handles human-in-the-loop (HITL), suspends your agent's execution, and elevates the request to allow for approval within the Sectr dashboard. It doesn't matter how long an approval takes: even weeks later, Sectr will resume execution of your agent after an approval.
 
-#### Run it locally
+### Run it locally
 
 If you want to use a live OpenAI model, just `cp .env.example .env`, and then put in your `OPENAI_API_KEY` in the `.env` file. If you don't, then the example uses a mocked LLM.
 
@@ -214,7 +212,7 @@ This opens up a live playground, where you can immediatley chat with your agent,
 
 ![Chat Playground in the dashboard](https://docs.sectr.dev/screenshots/chat.png)
 
-#### Deploy your agent
+### Deploy your agent
 
 To move your agent from running on your laptop to being cloud-deployed, all you need to do is run `sectr deploy` from your project directory:
 
@@ -232,17 +230,17 @@ This performs a cloud build of your agent, analyze its routes, and deploys it as
 
 You can then setup set your `OPENAI_API_KEY` as an encrypted secret for your app in the Sectr Dashboard at Settings → Secrets, and chat with your cloud-deployed support agent.
 
-#### Next: put it in your app
+### Next: put it in your app
 
 Your agent is live — now give it a frontend. [Connecting your frontend](references/getting-started/connecting-frontend.md) puts a CopilotKit chat on it in a few minutes, approvals included. (If you scaffolded with `--frontend copilotkit`, you already have one: see its `README.md`.)
 
-### Approvals (human in the loop)
+## Approvals (human in the loop)
 
 Some actions shouldn't run unattended: issuing refunds, sending emails,
 calling paid APIs. Sectr makes those tools **gated**: the turn suspends at
 the call and a human decides, then the turn resumes with the decision.
 
-#### Mark a tool as gated
+### Mark a tool as gated
 
 Either mechanism (they union):
 
@@ -273,7 +271,7 @@ A tool inside a subagent (another agent your agent runs from a tool) can't
 be gated: gate the subagent tool itself, and approving it runs the whole
 subagent. See [subagents](references/sdk/adapters.md#subagents).
 
-##### Gate by deployment config
+#### Gate by deployment config
 
 You can also gate tools without touching the code: list them under
 `approval_tools` in `sectr.toml`.
@@ -298,7 +296,7 @@ environment variable, which the SDK reads. Don't set that variable yourself:
 - `sectr deploy` is refused while the app still has a secret by that name.
   Remove it with `sectr secrets rm SECTR_APPROVAL_POLICY`.
 
-#### What a suspension looks like
+### What a suspension looks like
 
 The gated call raises `ApprovalRequired`; the adapter emits
 `ToolApprovalRequired` as the **final** event. No turn-end sentinel is
@@ -306,7 +304,7 @@ journaled — the turn is suspended, not over. The session reports
 `awaiting_approval`, the dashboard shows a banner, and the approval lands in
 the cross-app approvals inbox.
 
-#### Deciding
+### Deciding
 
 **From the CLI** (`sectr dev` / cloud with `--cloud`):
 
@@ -331,7 +329,7 @@ curl -X POST https://api.sectr.dev/sessions/$SESSION_ID/approval \
 Full flow details, the 409 cases, and TypeScript snippets:
 [approve or deny from your UI](references/api/approvals.md).
 
-#### What happens on resume
+### What happens on resume
 
 The decision is journaled (`TOOL_APPROVAL_GRANTED`/`DENIED`), and the
 platform spawns a fresh runner whose invocation reason is the decision.
@@ -357,7 +355,7 @@ The resumed turn runs exactly like any other: streamed, journaled, ending at
 the sentinel. One decision per resume: two gated calls in one turn become
 sequential approvals, decided one per turn.
 
-#### Frameworks without native approval (LangGraph)
+### Frameworks without native approval (LangGraph)
 
 When the framework has no per-tool human-in-the-loop that works without its
 own persistence, the pause is **exception-based**: the gated tool wrapper
