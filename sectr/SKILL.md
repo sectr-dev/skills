@@ -302,14 +302,6 @@ environment variable, which the SDK reads. Don't set that variable yourself:
 - `sectr deploy` is refused while the app still has a secret by that name.
   Remove it with `sectr secrets rm SECTR_APPROVAL_POLICY`.
 
-### What a suspension looks like
-
-The gated call raises `ApprovalRequired`; the adapter emits
-`ToolApprovalRequired` as the **final** event. No turn-end sentinel is
-journaled — the turn is suspended, not over. The session reports
-`awaiting_approval`, the dashboard shows a banner, and the approval lands in
-the cross-app approvals inbox.
-
 ### Deciding
 
 **From the CLI** (`sectr dev` / cloud with `--cloud`):
