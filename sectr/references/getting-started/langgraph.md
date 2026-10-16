@@ -132,7 +132,7 @@ pauses and the session waits for a decision: in the dashboard's approval
 inbox, from the CLI (`sectr send --approve`), or as an interrupt in your chat
 UI. On approval, Sectr runs the call exactly once and the graph continues; on
 denial, the model is told the call wasn't approved. The decision can come
-seconds or weeks later. See [approvals](../../SKILL.md#approvals-human-in-the-loop).
+seconds or weeks later. See [approvals](../../SKILL.md#defining-gated-tools).
 
 Tools that aren't sectr tools (a LangChain `@tool`, an MCP tool from
 `langchain-mcp-adapters`, a community tool) can be gated too:

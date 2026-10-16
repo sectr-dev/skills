@@ -240,13 +240,14 @@ This performs a cloud build of your agent, analyze its routes, and deploys it as
 
 You can then setup set your `OPENAI_API_KEY` as an encrypted secret for your app in the Sectr Dashboard at Settings → Secrets, and chat with your cloud-deployed support agent.
 
-## Approvals (human in the loop)
+## Defining Gated Tools
 
-Some actions shouldn't run unattended: issuing refunds, sending emails,
-calling paid APIs. Sectr makes those tools **gated**: the turn suspends at
-the call and a human decides, then the turn resumes with the decision.
+Gate a tool when it shouldn't run unattended (issuing refunds, sending
+emails, calling paid APIs): the turn suspends at the call, a human approves
+or denies it, and the turn resumes with the decision. A tool is gated if
+either its code or the deployment's config says so.
 
-### Mark a tool as gated
+### Marking as gated in code
 
 Either mechanism (they union):
 
@@ -271,13 +272,13 @@ On LangGraph, mark the tool with `sectr.tools.tool` and convert it with
 `as_langgraph_tool`, or gate any tool, MCP tools included, with LangChain's
 `HumanInTheLoopMiddleware` on `create_agent` or with
 `as_langgraph_tool(tool, needs_approval=True)`: Sectr pauses those calls
-itself — see [below](#frameworks-without-native-approval-langgraph).
+itself — see [frameworks without native approval](https://docs.sectr.dev/guides/approvals/#frameworks-without-native-approval-langgraph).
 
 A tool inside a subagent (another agent your agent runs from a tool) can't
 be gated: gate the subagent tool itself, and approving it runs the whole
 subagent. See [subagents](references/sdk/adapters.md#subagents).
 
-#### Gate by deployment config
+### Marking as gated in deployment config
 
 You can also gate tools without touching the code: list them under
 `approval_tools` in `sectr.toml`.
@@ -301,76 +302,6 @@ environment variable, which the SDK reads. Don't set that variable yourself:
 - `sectr secrets set SECTR_APPROVAL_POLICY` is refused.
 - `sectr deploy` is refused while the app still has a secret by that name.
   Remove it with `sectr secrets rm SECTR_APPROVAL_POLICY`.
-
-### Deciding
-
-**From the CLI** (`sectr dev` / cloud with `--cloud`):
-
-```sh
-sectr send --approve   # resume the turn with "approved"
-sectr send --deny      # resume with the rejection
-```
-
-**From the dashboard** — the session banner or the approvals inbox, one
-click each.
-
-**From your own UI** — the public API endpoint the dashboard itself uses
-(a user token works too, for sessions its user owns):
-
-```sh
-curl -X POST https://api.sectr.dev/sessions/$SESSION_ID/approval \
-  -H "Authorization: Bearer $SECTR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"approved": true}'
-```
-
-Full flow details, the 409 cases, and TypeScript snippets:
-[approve or deny from your UI](references/api/approvals.md).
-
-### What happens on resume
-
-The decision is journaled (`TOOL_APPROVAL_GRANTED`/`DENIED`), and the
-platform spawns a fresh runner whose invocation reason is the decision.
-Your handler sees it as `ctx.reason.kind == "approval_decision"` with
-`ctx.decision` and `ctx.pending_tool_call` in hand — execute the pending
-tool (or record the denial) and continue:
-
-```python
-if ctx.reason["kind"] == "approval_decision":
-    pending = ctx.pending_tool_call
-    result = (
-        await ctx.execute(pending["name"], call_id=pending["tool_call_id"], **pending["arguments"])
-        if ctx.decision["approved"]
-        else {"error": "denied"}
-    )
-    yield ToolResult(tool_call_id=pending["tool_call_id"], result=result)
-```
-
-(Real code: `examples/raw/main.py` — the framework-free resume path. The
-openai-agents adapter does the equivalent with the framework's own items.)
-
-The resumed turn runs exactly like any other: streamed, journaled, ending at
-the sentinel. One decision per resume: two gated calls in one turn become
-sequential approvals, decided one per turn.
-
-### Frameworks without native approval (LangGraph)
-
-When the framework has no per-tool human-in-the-loop that works without its
-own persistence, the pause is **exception-based**: the gated tool wrapper
-raises `ApprovalRequired`, a `BaseException` so frameworks' error handling
-can't swallow it, and the adapter turns it into the final
-`ToolApprovalRequired` frame. On resume the adapter rebuilds the paused
-state from the journal and lets the framework run the approved call itself
-(or answers it with the rejection text), journals the result, and continues —
-the approved action runs exactly once, and nothing of the framework's state
-survives between the pause and the resume except the journal. If one model message holds several
-gated calls, they are approved one per turn. Details:
-[LangGraph adapter](references/sdk/adapters.md#langgraph).
-
-> **Why a fresh invocation**: The runner is stateless — a pure function of `(transcript, reason)`. The
-> journal is the state; resuming after approval is just another invocation
-> whose reason happens to be a decision. That's also why agent code can be
-> edited between the pause and the resume without breaking anything.
 
 ## Reference
 

@@ -81,7 +81,7 @@ Options:
 ```
 
 `SECTR_APPROVAL_POLICY` can't be a secret: Sectr sets it from
-[`approval_tools`](../../SKILL.md#gate-by-deployment-config) in `sectr.toml`.
+[`approval_tools`](../../SKILL.md#marking-as-gated-in-deployment-config) in `sectr.toml`.
 
 Auth and server base come from [`sectr auth login`](https://docs.sectr.dev/getting-started/install/#authenticating-the-sectr-cli)
 (or `--api` / `--key`, or `SECTR_API_URL` / `SECTR_PLATFORM_KEY`).

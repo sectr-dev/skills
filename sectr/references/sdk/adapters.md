@@ -46,7 +46,7 @@ app.add_route("/chat", openai_agents(agent))
   `openai_agents(agent)` raise a `ValueError` naming the tool and
   `subagent_gated_tool`, so `sectr dev` and `sectr deploy` report it. One
   that the deployment's
-  [`approval_tools`](../../SKILL.md#gate-by-deployment-config)
+  [`approval_tools`](../../SKILL.md#marking-as-gated-in-deployment-config)
   names ends each turn with an `ERROR` with that code, before the model
   runs. See [subagents](#subagents).
 - MCP servers (`mcp_servers`) are connected for each invocation, on the
@@ -105,7 +105,7 @@ named agent's) are journaled with the message and sent back on later turns
 and approval resumes. A gated tool
 (`needs_approval=True`, `HumanInTheLoopMiddleware`'s `interrupt_on`, or
 the deployment's
-[`approval_tools`](../../SKILL.md#gate-by-deployment-config))
+[`approval_tools`](../../SKILL.md#marking-as-gated-in-deployment-config))
 suspends the turn with `TOOL_APPROVAL_REQUIRED`. Other tool calls in the same model message run
 first, and their results are recorded before the pause, so each runs once.
 `approval_tools` also gates the `ToolNode`'s
@@ -115,7 +115,7 @@ runs the call exactly once, as on any turn: your `ToolNode`'s settings, tool
 middleware, injected arguments, `Command` results and the edges out of the
 tool node all apply. A denied call gets the standard rejection text without
 running. Several gated calls in one model message become sequential
-approvals, one per turn. See [approvals](../../SKILL.md#approvals-human-in-the-loop).
+approvals, one per turn. See [approvals](../../SKILL.md#defining-gated-tools).
 
 **Supported graphs.** ReAct-shaped: a single top-level `ToolNode` holding your
 sectr tools: `langchain.agents.create_agent`, a `StateGraph(MessagesState)`
@@ -196,14 +196,14 @@ events (one start/end bracket per model response), tool calls `TOOL_CALL`
 its message and sent back on later turns and approval resumes, to the
 provider that issued it, as Pydantic AI does natively. A gated tool (`requires_approval=True`, a tool that raises
 `ApprovalRequired`, or the deployment's
-[`approval_tools`](../../SKILL.md#gate-by-deployment-config))
+[`approval_tools`](../../SKILL.md#marking-as-gated-in-deployment-config))
 suspends the turn with `TOOL_APPROVAL_REQUIRED`. On approval, Pydantic AI resumes from the history
 with `DeferredToolResults` and runs the tool itself, once; when denied it
 returns the standard rejection text and the tool never runs. System prompts
 (`system_prompt=`, static or dynamic) are restored on every turn;
 `instructions=` is applied by Pydantic AI as usual. Several gated calls in one
 response become sequential approvals, one per turn. See
-[approvals](../../SKILL.md#approvals-human-in-the-loop).
+[approvals](../../SKILL.md#defining-gated-tools).
 
 **Output types.** Structured output isn't supported yet: an `output_type`
 other than `str` (a model, `ToolOutput`, `NativeOutput`, ...) fails

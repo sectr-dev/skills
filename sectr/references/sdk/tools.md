@@ -42,11 +42,11 @@ A tool is gated when **either** applies:
    list to the runner as `SECTR_APPROVAL_POLICY` (a JSON list of tool
    names), where the SDK reads it; setting that variable yourself is an
    error. See
-   [gate by deployment config](../../SKILL.md#gate-by-deployment-config).
+   [gate by deployment config](../../SKILL.md#marking-as-gated-in-deployment-config).
 
 A gated call raises `sectr.tools.ApprovalRequired`, which the adapter
 converts into the final `ToolApprovalRequired` event — the turn suspends.
-See [approvals](../../SKILL.md#approvals-human-in-the-loop) for the full flow, and
+See [approvals](../../SKILL.md#defining-gated-tools) for the full flow, and
 [`SessionContext.execute`](context.md) for how the decision
 returns.
 

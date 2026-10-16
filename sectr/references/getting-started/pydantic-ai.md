@@ -95,7 +95,7 @@ async def refund(order_id: str) -> str:
 pauses and the session waits for a decision: in the dashboard's approval
 inbox, from the CLI (`sectr send --approve`), or as an interrupt in your chat
 UI. The decision can come seconds or weeks later. See
-[approvals](../../SKILL.md#approvals-human-in-the-loop).
+[approvals](../../SKILL.md#defining-gated-tools).
 
 Resuming is Pydantic AI's own deferred-tool resume, run from the session's
 transcript alone. On approval, Pydantic AI runs `refund` itself, exactly once,
@@ -148,7 +148,7 @@ restarts and scale-to-zero. Nothing needs serializing between turns.
   `HandleDeferredToolCalls` capability on your agent approves your natively
   gated tools without asking anyone; that's your explicit choice. Tools gated
   by deployment config
-  ([`approval_tools`](../../SKILL.md#gate-by-deployment-config))
+  ([`approval_tools`](../../SKILL.md#marking-as-gated-in-deployment-config))
   still pause.
 
 The [adapter reference](../sdk/adapters.md#pydantic-ai) has the details

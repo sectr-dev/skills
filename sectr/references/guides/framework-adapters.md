@@ -58,7 +58,7 @@ journal. The adapter doesn't use one:
   the model's tool call and ends the turn with `ToolApprovalRequired`. Any
   other tool gated in code (by `HumanInTheLoopMiddleware`'s `interrupt_on`,
   or `as_langgraph_tool(tool, needs_approval=True)`) or by the deployment's
-  [`approval_tools`](../../SKILL.md#gate-by-deployment-config)
+  [`approval_tools`](../../SKILL.md#marking-as-gated-in-deployment-config)
   pauses the same way, from the adapter's wrapper around the tool node; the
   middleware never calls `interrupt()`.
 - **Resume re-enters the graph at its tool node.** On the approval turn the

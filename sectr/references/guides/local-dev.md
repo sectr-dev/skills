@@ -36,7 +36,7 @@ Options:
   Ctrl-C drains in-flight turns, then exits.
 - **The same approval policy** — `[deploy] approval_tools` in `sectr.toml`
   gates the same tools here as deployed. See
-  [gate by deployment config](../../SKILL.md#gate-by-deployment-config).
+  [gate by deployment config](../../SKILL.md#marking-as-gated-in-deployment-config).
 
 ### Ports
 
