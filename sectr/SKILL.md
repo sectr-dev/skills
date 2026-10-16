@@ -87,9 +87,19 @@ Never assume it's already installed.
    conversation, and don't pass it with `--key` yourself. When they say
    they're done, run `sectr auth whoami` again.
 
-## Your first agent
+## Conceptual overview: how a Sectr app fits together
 
-Now that `sectr` CLI is installed and authenticated, let's get your first agent up and running: a customer support agent that can look up orders and issue refunds with admin approval.
+This section walks through the example project that `sectr init` creates
+(a support agent that looks up orders and issues refunds behind an
+approval) to show how the pieces of a Sectr app relate: the `sectr.toml`
+manifest, the agent code and the route it's served on, tools and approval
+gating, the local dev loop, and deploying.
+
+**Read it to understand Sectr, not as steps to follow.** Don't scaffold a
+project, copy this example, or run these commands unless the user asked
+for that. In an existing project, find the same pieces in the user's own
+code (`sectr.toml`, the `AgentApp` and its routes, their tools) and work
+from those.
 
 ### Project Setup
 
@@ -229,10 +239,6 @@ deployment 01a0d532-d771-7563-96bd-56f40cb28b2b: version 1 — building…
 This performs a cloud build of your agent, analyze its routes, and deploys it as a live HTTP endpoint on Sectr. You can jump straight to view it in the Sectr production dashboard at that URL. The last line is your route's [AG-UI](https://docs.ag-ui.com) endpoint — what a chat frontend connects to.
 
 You can then setup set your `OPENAI_API_KEY` as an encrypted secret for your app in the Sectr Dashboard at Settings → Secrets, and chat with your cloud-deployed support agent.
-
-### Next: put it in your app
-
-Your agent is live — now give it a frontend. [Connecting your frontend](references/getting-started/connecting-frontend.md) puts a CopilotKit chat on it in a few minutes, approvals included. (If you scaffolded with `--frontend copilotkit`, you already have one: see its `README.md`.)
 
 ## Approvals (human in the loop)
 

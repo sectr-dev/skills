@@ -2,7 +2,7 @@
 
 Below is the full CLI command reference. For the
 workflows behind the commands, get setup with
-[install](https://docs.sectr.dev/getting-started/install/), and the understand [the Sectr dev loop](../SKILL.md#your-first-agent).
+[install](https://docs.sectr.dev/getting-started/install/), and the understand [the Sectr dev loop](../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together).
 
 ## Authenticating the CLI
 

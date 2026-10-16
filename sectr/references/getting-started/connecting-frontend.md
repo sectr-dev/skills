@@ -16,7 +16,7 @@ and approvals as native interrupts.
 
 [`sectr-copilotkit-starter`](https://github.com/sectr-dev/sectr-copilotkit-starter)
 is CopilotKit's own quickstart with one change: the agent is your Sectr agent.
-It ships with the support agent from [your first agent](../../SKILL.md#your-first-agent)
+It ships with the support agent from [your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together)
 in `agent/`, on two routes: `/chat_oai` (OpenAI Agents SDK) and
 `/chat_langgraph` (the same agent on LangGraph, with its own chat page at
 `/langgraph`; see [using LangGraph](langgraph.md)).

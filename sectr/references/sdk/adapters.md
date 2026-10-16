@@ -55,7 +55,7 @@ app.add_route("/chat", openai_agents(agent))
   as the SDK sends it from its own history: each response's reasoning items
   (encrypted content included) are journaled with its message.
 
-See the [first-agent guide](../../SKILL.md#your-first-agent) for the full walkthroug).
+See the [first-agent guide](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together) for the full walkthroug).
 
 ## LangGraph
 

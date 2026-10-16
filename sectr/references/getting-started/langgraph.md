@@ -6,7 +6,7 @@ code, exposed on a Sectr route. Sectr journals every turn, streams it to your
 frontend, and pauses for approval when a gated tool is called.
 
 This page walks through the support agent from
-[your first agent](../../SKILL.md#your-first-agent), rebuilt on LangGraph. You
+[your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together), rebuilt on LangGraph. You
 can run it right away: `sectr init` scaffolds it.
 
 ```sh

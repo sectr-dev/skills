@@ -89,7 +89,7 @@ thinnest of the three:
 ## Which to pick
 
 - **openai-agents** — production-ready today; the
-  [first-agent guide](../../SKILL.md#your-first-agent) is built on it.
+  [first-agent guide](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together) is built on it.
 - **LangGraph** — if your agent is already a LangGraph graph, or you want
   LangChain's model and tool ecosystem. ReAct-shaped graphs are supported;
   start with [using LangGraph](../getting-started/langgraph.md).
