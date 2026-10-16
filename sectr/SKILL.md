@@ -362,8 +362,9 @@ approval_tools = ["refund", "delete_account"]
 ```
 
 These tools pause for approval even if the code doesn't gate them, MCP
-tools included. This is the safety net for a tool its author forgot to
-mark. The list applies in `sectr dev` and when deployed. A change takes
+tools included. This allows declarative, policy-directed gating: which
+tools need approval is configuration, set per deployment rather than in
+the agent's code. The list applies in `sectr dev` and when deployed. A change takes
 effect the next time you start `sectr dev` or run `sectr deploy`.
 
 Sectr hands the list to your runner as the `SECTR_APPROVAL_POLICY`

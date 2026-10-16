@@ -37,8 +37,8 @@ A tool is gated when **either** applies:
 
 1. **Code marking** — `@tool(needs_approval=True)`.
 2. **Platform policy** — `approval_tools` under `[deploy]` in `sectr.toml`
-   can gate a tool the author forgot to mark. This is what makes "refund
-   requires approval" enforceable without changing code. Sectr passes the
+   gates tools declaratively, as policy-directed configuration rather than
+   in the agent's code. Sectr passes the
    list to the runner as `SECTR_APPROVAL_POLICY` (a JSON list of tool
    names), where the SDK reads it; setting that variable yourself is an
    error. See
