@@ -249,7 +249,8 @@ either its code or the deployment's config says so.
 
 ### Marking as gated in code
 
-Either mechanism (they union):
+Use your framework's own way of marking a tool as needing approval, or
+`sectr.tools` for framework-free code:
 
 ```python
 @tool(needs_approval=True)          # framework-free (sectr.tools)
@@ -264,9 +265,6 @@ async def refund(order_id: str) -> str: ...
 ```python
 Tool(refund, requires_approval=True)  # pydantic-ai native deferred tools
 ```
-
-If one model response calls several gated tools, they are approved one at a
-time: you decide the first, and the turn pauses again on the next.
 
 On LangGraph, mark the tool with `sectr.tools.tool` and convert it with
 `as_langgraph_tool`, or gate any tool, MCP tools included, with LangChain's
