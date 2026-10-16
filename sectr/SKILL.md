@@ -44,6 +44,51 @@ else — read these first, the details below all follow from them:
   (no turn-end sentinel is journaled); the human's decision resumes it as
   a fresh invocation whose reason is `approval_decision`.
 
+## Before anything else: check that Sectr is set up
+
+Do this before running any `sectr` command, and fix whatever is missing.
+Never assume it's already installed.
+
+1. **The `sectr` CLI.** Run `sectr --version`.
+   - If it prints a version, go on.
+   - If the command isn't found, run `~/.local/bin/sectr --version`. The
+     installer puts `sectr` there, but a shell started before the install
+     doesn't have it on its `PATH`. If that works, run
+     `export PATH="$HOME/.local/bin:$PATH"` and go on.
+   - Otherwise install it:
+     `curl -fsSL https://sectr.dev/install.sh | sh`, then
+     `export PATH="$HOME/.local/bin:$PATH"`, then check `sectr --version`
+     again.
+2. **`uv`.** `sectr init` and `sectr dev` run the agent's Python with uv.
+   Run `uv --version`. If it isn't found, install it with
+   `curl -LsSf https://astral.sh/uv/install.sh | sh`, put
+   `$HOME/.local/bin` on the `PATH` as above, and check again.
+3. **A Sectr project.** A project is a directory with a `sectr.toml`.
+   - If there's none and the user wants a new agent, create one with
+     `sectr init <name> --template <framework>`, where the framework is
+     `openai-agents`, `langgraph` or `pydantic-ai`. Always pass
+     `--template`: without it `sectr init` asks questions in the terminal,
+     which you can't answer. Add `--frontend copilotkit` only if the user
+     wants a chat UI.
+   - If the user has an existing Python agent, add the SDK for its
+     framework instead, e.g. `uv add "sectr[langgraph]"` (see
+     `references/getting-started/` and `references/sdk/adapters.md`).
+4. **Logged in, only before a cloud command** (`sectr deploy`,
+   `sectr secrets`, `sectr send --cloud`; local `sectr dev` doesn't need
+   it). Run `sectr auth whoami`. If it fails or prints
+   `no stored credentials`, ask the user to:
+   1. sign in at https://app.sectr.dev with GitHub or Google, and click
+      **Create CLI key** (in the Getting-started checklist, or
+      Settings → API keys);
+   2. run `sectr auth login` in their own terminal, where it asks for the
+      key with hidden input.
+
+   The key is a credential: don't ask the user to paste it into the
+   conversation, and don't pass it with `--key` yourself. When they say
+   they're done, run `sectr auth whoami` again.
+
+The sections below explain each step in more detail.
+
 ## Getting started
 
 ## Setting Up Sectr for Development
