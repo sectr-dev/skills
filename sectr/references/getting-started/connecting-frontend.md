@@ -95,6 +95,26 @@ export const GET = handler;
 export const POST = handler;
 ```
 
+To serve several routes from one CopilotKit app, give each its own `agentId`
+in the Runtime's agents map. The
+[`sectr-copilotkit-starter`](https://github.com/sectr-dev/sectr-copilotkit-starter)
+does this with the OpenAI Agents SDK and LangGraph versions of its support
+agent:
+
+```ts
+const agents = {
+  default: new SectrAgent({ url: "https://api.sectr.dev/ag-ui/support-agent/chat_oai" }),
+  langgraph: new SectrAgent({ url: "https://api.sectr.dev/ag-ui/support-agent/chat_langgraph" }),
+};
+const runtime = new CopilotRuntime({ agents, runner: new SectrRunner({ agents }) });
+```
+
+and pick one in the chat:
+
+```tsx
+<CopilotSidebar agentId="langgraph" threadId={threadId} />
+```
+
 **2. The agent and the runner** — [`@sectr/copilotkit`](https://www.npmjs.com/package/@sectr/copilotkit),
 which works with the CopilotKit packages your app already has:
 

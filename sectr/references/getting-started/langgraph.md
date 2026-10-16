@@ -5,19 +5,16 @@ same way it runs OpenAI Agents SDK ones: your graph is ordinary LangGraph
 code, exposed on a Sectr route. Sectr journals every turn, streams it to your
 frontend, and pauses for approval when a gated tool is called.
 
-This page walks through the support agent from
-[your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together), rebuilt on LangGraph. You
-can run it right away: `sectr init` scaffolds it.
+This page walks through the support agent that `sectr init` scaffolds on
+LangGraph. For the parts of a project that don't depend on the framework (the
+manifest, secrets, running and deploying), see
+[your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together). You can run it right away:
 
 ```sh
 sectr init my-agent --template langgraph
 ```
 
-Add `--frontend copilotkit` for a CopilotKit chat app wired to it. The same
-agent is also the `/chat_langgraph` route of the
-[`sectr-copilotkit-starter`](https://github.com/sectr-dev/sectr-copilotkit-starter),
-next to the OpenAI Agents SDK version on `/chat_oai`, with a chat page for
-each.
+Add `--frontend copilotkit` for a CopilotKit chat app wired to it.
 
 ## Install
 
@@ -68,11 +65,10 @@ app.add_route("/chat", langgraph(graph))
 messages and tool calls onto Sectr's session events. Note there's no
 checkpointer in `create_agent`; see [how state works](#how-state-works).
 
-Your module must import cleanly with no key set: `sectr dev` imports your app
-to find its routes before it injects `.env` secrets, and the OpenAI chat
-model raises if it's built without a key. The template falls back to a
-scripted model, which also means the first run needs no keys at all; the
-runs themselves get the real key and the real model.
+Like any Sectr app, the module must import with no key set
+([why](../../SKILL.md#serving-the-agent-on-a-route)), and
+LangChain's OpenAI chat model raises if it's built without one: hence the
+fallback to a scripted model above.
 
 A hand-built graph works too, as long as it's ReAct-shaped: an agent node
 plus one `ToolNode` holding your sectr tools.
@@ -128,24 +124,15 @@ TOOLS = [lookup_order, refund]
 ```
 
 `needs_approval=True` gates `refund`. When the model calls it, the turn
-pauses and the session waits for a decision: in the dashboard's approval
-inbox, from the CLI (`sectr send --approve`), or as an interrupt in your chat
-UI. On approval, Sectr runs the call exactly once and the graph continues; on
-denial, the model is told the call wasn't approved. The decision can come
-seconds or weeks later. See [approvals](../../SKILL.md#defining-gated-tools).
+pauses until someone approves or denies it. On approval, the graph's own tool
+node runs the call, exactly once, and the graph continues; on denial, the
+model is told the call wasn't approved.
 
 Tools that aren't sectr tools (a LangChain `@tool`, an MCP tool from
-`langchain-mcp-adapters`, a community tool) can be gated too:
-
-- On `create_agent`, with LangChain's own `HumanInTheLoopMiddleware`:
-  `middleware=[HumanInTheLoopMiddleware(interrupt_on={"refund": True})]`.
-  Sectr pauses those calls itself, so the middleware never calls
-  `interrupt()`. Sectr's decisions are approve and reject, so each entry
-  must allow both (`True` does).
-- On any graph, with `as_langgraph_tool(tool, needs_approval=True)`.
-
-Calling LangGraph's `interrupt()` yourself fails loudly instead of pausing:
-it needs a checkpointer to resume, and Sectr runs graphs without one.
+`langchain-mcp-adapters`, a community tool) can be gated too, with
+`as_langgraph_tool(tool, needs_approval=True)` or LangChain's
+`HumanInTheLoopMiddleware`. LangGraph's own `interrupt()` doesn't work on
+Sectr. [Approvals](../../SKILL.md#langgraph) shows each option.
 
 ## How state works
 
@@ -154,60 +141,19 @@ Every turn is a fresh run of your graph, with its messages rebuilt from the
 session's transcript. So there's no checkpointer database to run, and a
 conversation survives deploys, restarts and scale-to-zero.
 
-The model this needs has limits:
-
-- **ReAct-shaped graphs only**, with exactly one top-level `ToolNode` holding
-  your sectr tools. A graph compiled with a checkpointer, or with sectr tools
-  in several `ToolNode`s or in a subgraph (multi-agent and supervisor
-  graphs), fails with a clear error when you build the route.
-- **Messages are the only state.** Other state channels don't survive from
-  one turn to the next. Keep state in the conversation, for example a
-  todo-list tool whose journaled call *is* the write.
-- **One approval per turn.** Several gated calls in one model message become
-  sequential approvals.
-
-The [adapter reference](../sdk/adapters.md#langgraph) has the details.
+That model has limits: ReAct-shaped graphs only, and messages are the only
+state that carries from one turn to the next. The
+[adapter reference](../sdk/adapters.md#langgraph) lists them, with how
+the adapter works.
 
 ## Run, deploy, connect
 
-Run it locally:
-
-```sh
-sectr dev
-# - 🔌 connect via AG-UI at: https://local.sectr.dev:8420/ag-ui/my-agent/chat
-```
-
-The dashboard opens with a playground for the route. To use the real model,
-put `OPENAI_API_KEY` in `.env`.
-
-Deploy it, and give the deployed app its key:
-
-```sh
-sectr deploy
-sectr secrets set OPENAI_API_KEY
-```
+Run and deploy it like any Sectr project: `sectr dev` locally, then
+`sectr deploy`, and `sectr secrets set OPENAI_API_KEY` for the deployed app's
+key. [Your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together) walks through both.
 
 Every route is an [AG-UI](https://docs.ag-ui.com) endpoint, whatever the
 framework behind it, so a LangGraph route connects to a frontend exactly
 like any other: no CopilotKit LangGraph integration and no LangGraph
-Platform. `sectr init --frontend copilotkit` scaffolds that frontend for you.
-To serve several routes from one CopilotKit app (as the starter does with its
-OpenAI Agents SDK and LangGraph routes), give each its own `agentId` in the
-Runtime's agents map:
-
-```ts
-const agents = {
-  default: new SectrAgent({ url: "https://api.sectr.dev/ag-ui/support-agent/chat_oai" }),
-  langgraph: new SectrAgent({ url: "https://api.sectr.dev/ag-ui/support-agent/chat_langgraph" }),
-};
-const runtime = new CopilotRuntime({ agents, runner: new SectrRunner({ agents }) });
-```
-
-and pick one in the chat:
-
-```tsx
-<CopilotSidebar agentId="langgraph" threadId={threadId} />
-```
-
-[Connecting your frontend](connecting-frontend.md) covers the
-rest: user tokens, approvals as interrupts, and reattaching on refresh.
+Platform. [Connecting your frontend](connecting-frontend.md)
+covers it.

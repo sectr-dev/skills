@@ -92,24 +92,24 @@ Never assume it's already installed.
 Sectr runs agents written with these. Each framework's agent is served
 through an adapter from the `sectr` SDK:
 
-| Framework | Serve it with | Add to a project |
-| --- | --- | --- |
-| OpenAI Agents SDK | `app.add_route("/chat", openai_agents(agent))`, from `sectr.adapters.openai_agents` | `uv add "sectr[openai-agents]"` |
-| LangGraph | `app.add_route("/chat", langgraph(graph))`, from `sectr.adapters.langgraph` | `uv add "sectr[langgraph]"` |
-| Pydantic AI | `app.add_route("/chat", pydantic_ai(agent))`, from `sectr.adapters.pydantic_ai` | `uv add "sectr[pydantic-ai]"` plus a model extra, e.g. `"pydantic-ai-slim[openai]"` |
-| No framework | a handler of your own, `@app.agent_route("/chat")`, with tools from `sectr.tools` | `uv add sectr` |
+| Framework                                                        | Status                                     | Serve it with                                                                                           | Add to a project                                                                          |
+| ---------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [OpenAI Agents SDK](references/getting-started/openai-agents.md) | Supported                                  | `openai_agents(agent)`, from `sectr.adapters.openai_agents`                                             | `uv add "sectr[openai-agents]"`                                                           |
+| [LangGraph](references/getting-started/langgraph.md)             | Supported, for ReAct-shaped graphs         | `langgraph(graph)`, from `sectr.adapters.langgraph`                                                     | `uv add "sectr[langgraph]"`                                                               |
+| [Pydantic AI](references/getting-started/pydantic-ai.md)         | Supported, for a plain `pydantic_ai.Agent` | `pydantic_ai(agent)`, from `sectr.adapters.pydantic_ai`                                                 | `uv add "sectr[pydantic-ai]"`, plus a model provider such as `"pydantic-ai-slim[openai]"` |
+| No framework                                                     | Supported                                  | your own handler, `@app.agent_route("/chat")`, with tools from [`sectr.tools`](references/sdk/tools.md) | `uv add sectr`                                                                            |
 
-Each adapter supports most, not all, of its framework: check the
-framework's section in `references/sdk/adapters.md` before relying on a
-feature (subagents, structured output, checkpointers and so on).
+Each adapter supports most, not all, of its framework: the
+[adapter reference](references/sdk/adapters.md) lists what each one does and
+its limits (subagents, structured output, checkpointers and so on).
 
 ## Conceptual overview: how a Sectr app fits together
 
-This section walks through the example project that `sectr init` creates
-(a support agent that looks up orders and issues refunds behind an
-approval) to show how the pieces of a Sectr app relate: the `sectr.toml`
-manifest, the agent code and the route it's served on, tools and approval
-gating, the local dev loop, and deploying.
+This section walks through the parts every Sectr project has, whatever its
+framework: the `sectr.toml` manifest, serving the agent on a route, tools and
+approvals, running locally, and deploying. It uses the support agent that
+`sectr init` scaffolds (it looks up orders and issues refunds, with a human
+approving each refund) as the example.
 
 **Read it to understand Sectr, not as steps to follow.** Don't scaffold a
 project, copy this example, or run these commands unless the user asked
@@ -117,7 +117,7 @@ for that. In an existing project, find the same pieces in the user's own
 code (`sectr.toml`, the `AgentApp` and its routes, their tools) and work
 from those.
 
-### Project Setup
+### Project setup
 
 Scaffold a runnable project:
 
@@ -127,26 +127,28 @@ sectr init my-agent
 
 `sectr init` asks two things:
 
-- **The framework:** OpenAI Agents SDK or LangGraph. This page walks through
-  the OpenAI Agents SDK version; [Using LangGraph](references/getting-started/langgraph.md)
-  covers the other. Both are the same agent on the same `/chat` route, with
-  the same file names.
-- **A chat frontend:** none, or a CopilotKit chat app (Next.js, needs Node 20+)
-  already wired to your agent.
+- **The framework:** the OpenAI Agents SDK, LangGraph or Pydantic AI. Each is
+  the same support agent on the same `/chat` route, with the same file names;
+  see [using the OpenAI Agents SDK](references/getting-started/openai-agents.md),
+  [using LangGraph](references/getting-started/langgraph.md) and
+  [using Pydantic AI](references/getting-started/pydantic-ai.md).
+- **A chat frontend:** none, or a CopilotKit chat app (Next.js, needs
+  Node 20+) already wired to your agent.
 
 To skip the questions, pass them as flags: `sectr init my-agent --template
-openai-agents` (or `langgraph`), plus `--frontend copilotkit` for the chat app.
+openai-agents` (or `langgraph`, `pydantic-ai`), plus `--frontend copilotkit`
+for the chat app.
 
-Without a frontend, this generates the following project layout:
+Without a frontend, this generates:
 
 ```text
 my-agent/
-├── sectr.toml     # <-- The Sectr manifest
-├── app.py         # <-- OpenAI Agents SDK code + a Sectr endpoint
-├── tools.py       # (tool definitions)
-├── fake.py        # (mock model)
+├── sectr.toml     # <-- the Sectr manifest
+├── app.py         # <-- your agent, and the route that serves it
+├── tools.py       # its tools
+├── fake.py        # a mock model, used when no API key is set
 ├── pyproject.toml
-├── .env.example   # copy to .env to setup an OPENAI_API_KEY
+├── .env.example   # copy to .env to set OPENAI_API_KEY
 └── .gitignore
 ```
 
@@ -164,83 +166,79 @@ my-agent/
 └── README.md
 ```
 
-### The agent
+### The manifest
 
-Using Sectr is as easy as writing the agent code you are already familiar with, and then exposing it on a Sectr route. No special frameworks or code patterns are required.
+`sectr.toml` tells Sectr what your project is:
 
-#### Agent defintions and routes
+```toml
+[app]
+name = "my-agent"
 
-Let's take quick look at `app.py`, where we define the agent and its Sectr route:
-
-```py
-from agents import Agent
-from sectr import AgentApp
-from sectr.adapters.openai_agents import openai_agents
-
-from fake import setup_model
-from tools import lookup_order, refund
-
-model = setup_model()
-
-agent = Agent(
-    name="support",
-    instructions=(
-        "You are a customer-support agent for a small shop. "
-        "Look up order status with the lookup_order tool, "
-        "and issue refunds with the refund tool."
-    ),
-    tools=[lookup_order, refund],
-    model=model,
-)
-
-app = AgentApp(name="my-agent", env=["OPENAI_API_KEY"])
-app.add_route("/chat", openai_agents(agent, model=model))
+[agent]
+entry = "app:app"
+python = "3.12"
 ```
 
-First, you define your `Agent` using standard OpenAI Agents SDK code. You don't have to do anything different here: this is the agent code you already write, no special SDK or domain specific language needed. Sectr is designed to be agnostic to the agent framework, with more coming soon.
+- **`[app] name`** names the app; its slug identifies it to `sectr deploy`
+  and `sectr secrets`.
+- **`[agent] entry`** is where your `AgentApp` lives, as `module:attribute`.
 
-Second, you simply expose your agent as a route on your Sectr app. Thats all.
+Two optional sections come up later: `[deploy] approval_tools`, to
+[gate tools by config](#marking-as-gated-in-deployment-config),
+and `[dev] port`, to [pin the local port](references/guides/local-dev.md#ports).
 
-Notice what's *absent*: no session handling, no streaming
-plumbing, no state management, no Postgres queries to persist conversations.
-Sectr provides that, so you can focus on the AI.
+### Serving the agent on a route
 
-#### Tool Defintions
-
-The tools are vanilla OpenAI Agents SDK tools, defined in `tools.py`:
+`app.py` defines your agent in ordinary framework code, then serves it on a
+route of an `AgentApp`, through the adapter for its framework:
 
 ```python
-from agents import function_tool
+from sectr import AgentApp
 
-@function_tool
-async def lookup_order(order_id: str) -> dict[str, str]:
-    ...
-
-@function_tool(needs_approval=True)
-async def refund(order_id: str) -> str:
-    ...
+app = AgentApp(name="my-agent", env=["OPENAI_API_KEY"])
+app.add_route("/chat", openai_agents(agent))  # or langgraph(graph), pydantic_ai(agent)
 ```
 
-Note that the `refund` tool is marked with `needs_approval=True`. Sectr automatically handles human-in-the-loop (HITL), suspends your agent's execution, and elevates the request to allow for approval within the Sectr dashboard. It doesn't matter how long an approval takes: even weeks later, Sectr will resume execution of your agent after an approval.
+- **A route serves one agent.** An app can have several, each on its own path.
+- **`env`** lists the secrets the agent needs, by name. Their values come
+  from `.env` locally and from `sectr secrets` when deployed (see
+  [secrets](references/guides/secrets.md)).
+- **The adapter** maps your framework's streamed output and approval requests
+  onto Sectr's session events. It's the only Sectr-specific line: the agent
+  itself is the code you'd write anyway.
+
+Notice what's *absent*: no session handling, no streaming plumbing, no state
+management, no database to persist conversations. Sectr keeps every session
+in its journal, so a conversation survives restarts, redeploys and
+scale-to-zero.
+
+One rule applies whatever the framework: **your module must import cleanly
+with no secrets set.** `sectr dev` and `sectr deploy` import your app to find
+its routes before any secret is injected, so build anything that needs a key
+(a model client, say) only when the key is present. The scaffolded
+`fake.py` does that: with no `OPENAI_API_KEY`, a mock model answers, so the
+first run needs no keys at all.
 
 ### Run it locally
 
-If you want to use a live OpenAI model, just `cp .env.example .env`, and then put in your `OPENAI_API_KEY` in the `.env` file. If you don't, then the example uses a mocked LLM.
-
-Once you have your OpenAI API key setup, start the local dev server:
+To use the real model, `cp .env.example .env` and put your `OPENAI_API_KEY`
+in `.env`. Without it, the mock model answers. Then start the local dev
+server:
 
 ```sh
 # cd my-agent   (if not already there)
 sectr dev       # Opens up a live dashboard for local dev server
 ```
 
-This opens up a live playground, where you can immediatley chat with your agent, observe its actions, test out, and iterate on its behavior:
+This opens a live playground, where you can chat with your agent, watch its
+actions, and iterate on its behavior:
 
 ![Chat Playground in the dashboard](https://docs.sectr.dev/screenshots/chat.png)
 
 ### Deploy your agent
 
-To move your agent from running on your laptop to being cloud-deployed, all you need to do is run `sectr deploy` from your project directory:
+To move your agent from your laptop to the cloud, run `sectr deploy` from
+your project directory:
 
 ```sh
 $ sectr deploy
@@ -252,9 +250,16 @@ deployment 01a0d532-d771-7563-96bd-56f40cb28b2b: version 1 — building…
 🔌 connect via AG-UI at: https://api.sectr.dev/ag-ui/my-agent/chat
 ```
 
-This performs a cloud build of your agent, analyze its routes, and deploys it as a live HTTP endpoint on Sectr. You can jump straight to view it in the Sectr production dashboard at that URL. The last line is your route's [AG-UI](https://docs.ag-ui.com) endpoint — what a chat frontend connects to.
+This builds your agent in the cloud, finds its routes, and serves each as a
+live HTTP endpoint. The dashboard URL shows the deployed app. The last line
+is the route's [AG-UI](https://docs.ag-ui.com) endpoint, what a chat frontend
+connects to.
 
-You can then setup set your `OPENAI_API_KEY` as an encrypted secret for your app in the Sectr Dashboard at Settings → Secrets, and chat with your cloud-deployed support agent.
+Then give the deployed app its key, and chat with it:
+
+```sh
+sectr secrets set OPENAI_API_KEY
+```
 
 To give the deployed agent a chat UI, see [Connecting your frontend](references/getting-started/connecting-frontend.md): it puts a CopilotKit chat on it, approvals included. (A project scaffolded with `--frontend copilotkit` already has one: see its `README.md`.)
 
@@ -282,7 +287,7 @@ written:
 
 A tool inside a subagent (another agent your agent runs from a tool) can't
 be gated: gate the subagent tool itself, and approving it runs the whole
-subagent. See [subagents](references/sdk/adapters.md#subagents).
+subagent. See [subagents](references/guides/subagents.md).
 
 #### OpenAI Agents SDK
 
@@ -336,8 +341,8 @@ Any of these, and they can be mixed:
   )
   ```
 
-Sectr pauses all of these itself — see
-[frameworks without native approval](https://docs.sectr.dev/guides/approvals/#frameworks-without-native-approval-langgraph).
+Sectr pauses all of these itself: see
+[how the LangGraph adapter works](references/sdk/adapters.md#langgraph).
 
 #### No framework
 
@@ -381,11 +386,13 @@ Deeper material lives in `references/`, one file per docs page:
 | --- | --- |
 | **Connecting your frontend**: Put a CopilotKit chat on your deployed agent — every Sectr route is an AG-UI endpoint, so CopilotKit's React components work as-is. | references/getting-started/connecting-frontend.md |
 | **Using LangGraph**: Serve a LangGraph agent on Sectr — streaming, approvals and durable sessions for your graph, with no checkpointer to run. | references/getting-started/langgraph.md |
+| **Using the OpenAI Agents SDK**: Serve an OpenAI Agents SDK agent on Sectr — streaming, native tool approvals and durable sessions, with the agent unchanged. | references/getting-started/openai-agents.md |
 | **Using Pydantic AI**: Serve a Pydantic AI agent on Sectr — streaming, native tool approvals and durable sessions, resumed from the journal alone. | references/getting-started/pydantic-ai.md |
 | **Compaction**: Keep long-running conversations inside the context window — TRANSCRIPT_COMPACTED and the positional fold. | references/guides/compaction.md |
-| **Framework adapters**: OpenAI Agents SDK, LangGraph and Pydantic AI on Sectr — what an adapter does, and what each supports. | references/guides/framework-adapters.md |
+| **Choosing a framework**: Which agent frameworks Sectr supports, how each is served, and which to pick. | references/guides/framework-adapters.md |
 | **Local dev**: The sectr dev loop — local engine, gateway, dashboard, send/tail. | references/guides/local-dev.md |
 | **Secrets**: Write-only secrets for deployed agents — set, list, remove, and how they reach your code. | references/guides/secrets.md |
+| **Subagents**: A subagent is another agent your agent runs from a tool — what works on Sectr, and the one thing that doesn't yet. | references/guides/subagents.md |
 | **AG-UI endpoint**: Every deployed route is an AG-UI 1.0 endpoint — run a turn with POST, reconnect with GET. Requests, events, approvals, auth and errors. | references/api/ag-ui.md |
 | **Approve or deny actions**: The approvals inbox endpoints — decide pending tool calls from your own frontend. | references/api/approvals.md |
 | **Authentication**: Platform keys, invocation keys, user tokens, and the session cookie — which principal for which endpoint. | references/api/auth.md |
