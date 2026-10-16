@@ -256,6 +256,8 @@ This performs a cloud build of your agent, analyze its routes, and deploys it as
 
 You can then setup set your `OPENAI_API_KEY` as an encrypted secret for your app in the Sectr Dashboard at Settings → Secrets, and chat with your cloud-deployed support agent.
 
+To give the deployed agent a chat UI, see [Connecting your frontend](references/getting-started/connecting-frontend.md): it puts a CopilotKit chat on it, approvals included. (A project scaffolded with `--frontend copilotkit` already has one: see its `README.md`.)
+
 ## Defining Gated Tools
 
 Gate a tool when it shouldn't run unattended (issuing refunds, sending
@@ -370,12 +372,6 @@ effect the next time you start `sectr dev` or run `sectr deploy`.
 Sectr hands the list to your runner as the `SECTR_APPROVAL_POLICY`
 environment variable, which the SDK reads. Don't set that variable yourself:
 `approval_tools` is the only place to set the policy.
-
-- `sectr dev` refuses to run with `SECTR_APPROVAL_POLICY` in its environment
-  or in `.env`.
-- `sectr secrets set SECTR_APPROVAL_POLICY` is refused.
-- `sectr deploy` is refused while the app still has a secret by that name.
-  Remove it with `sectr secrets rm SECTR_APPROVAL_POLICY`.
 
 ## Reference
 
