@@ -7,5 +7,5 @@ Each has its own page, with its signature, behavior and limits:
 - [LangGraph](langgraph.md), `sectr.adapters.langgraph`
 - [Pydantic AI](pydantic-ai.md), `sectr.adapters.pydantic_ai`
 
-For which frameworks are supported, how to install each, and which to pick,
-see [choosing a framework](https://docs.sectr.dev/guides/framework-adapters/).
+For which frameworks are supported and how to install each, see the
+[support matrix](../../../SKILL.md#supported-agent-frameworks).
