@@ -20,32 +20,37 @@ app.add_route("/chat", openai_agents(agent))
     (`Runner.run_streamed(context=...)`): tools, hooks, guardrails and
     dynamic instructions read it as `RunContextWrapper.context`, and MCP tool
     filters see it too. A static value is `context=lambda ctx: value`.
+
+## Behavior
+
 - An approved tool runs as the SDK runs any tool, with its guardrails, your
   hooks, tracing, the run context and your `run_config`.
-- Structured output isn't supported yet: an `output_type` on the agent, or on
-  an agent it hands off to, fails `openai_agents(agent)` with a `ValueError`.
-  The agent's answer is journaled as text.
 - Handoffs (`handoffs=[...]`): the conversation stays with the agent it was
   handed off to, as in the SDK. The handoff itself is journaled as a tool
   call and its result (the SDK's `transfer_to_<agent>` call and its output),
   and every later turn, an approval resume included, continues with the agent
-  the conversation is with. If you redeploy without a handoff a session went
-  through, that session's next turn ends with an `ERROR` whose code is
-  `openai_agents_unknown_handoff`.
-  - Not supported yet, and rejected by `openai_agents(agent)` with a
-    `ValueError`: a handoff that rewrites the history the next agent sees
-    (`input_filter` or `nest_handoff_history` on `handoff()`, or
-    `handoff_input_filter` or `nest_handoff_history` in your `run_config`),
-    and a `Handoff` you construct yourself instead of with `handoff()`.
-- Subagents (`as_tool()`), and gated tools on an agent you hand off to: see
-  [subagents](#subagents).
+  the conversation is with.
 - MCP servers (`mcp_servers`) are connected for each invocation, on the
   agent and on its subagents.
 - Reasoning is sent back to the model on later turns and approval resumes,
   as the SDK sends it from its own history: each response's reasoning items
   (encrypted content included) are journaled with its message.
 
-## Subagents
+## Limits to know about
+
+- **Structured output isn't supported yet.** An `output_type` on the agent,
+  or on an agent it hands off to, fails `openai_agents(agent)` with a
+  `ValueError`. The agent's answer is journaled as text.
+- **Some handoffs aren't supported yet**, and `openai_agents(agent)` rejects
+  them with a `ValueError`: a handoff that rewrites the history the next
+  agent sees (`input_filter` or `nest_handoff_history` on `handoff()`, or
+  `handoff_input_filter` or `nest_handoff_history` in your `run_config`), and
+  a `Handoff` you construct yourself instead of with `handoff()`.
+- **Removing a handoff strands its sessions.** If you redeploy without a
+  handoff a session went through, that session's next turn ends with an
+  `ERROR` whose code is `openai_agents_unknown_handoff`.
+
+### Subagents
 
 A subagent is another agent your agent runs from a tool. On Sectr it's an
 ordinary tool, and an opaque one: the journal, and every client streaming the
@@ -81,8 +86,8 @@ makes `openai_agents(agent)` raise a `ValueError` naming the tool and
 the deployment's `approval_tools` names ends each turn with an `ERROR` with
 that code, before the model runs.
 
-**Limits.** Where your own code starts the subagent or handles
-what it returns, the adapter can't see its run:
+Where your own code starts the subagent or handles what it returns, the
+adapter can't see its run:
 
 - **A subagent your tool runs with `Runner.run` is
   invisible to the adapter.** A tool the policy names on it runs **without

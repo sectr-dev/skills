@@ -22,8 +22,8 @@ app.add_route("/chat", pydantic_ai(agent))
     `model` is for deterministic fakes.
   - `deps` is a **factory** called once per invocation with the turn's
     `SessionContext` (its `ctx.session_id` identifies the session), sync or
-    `async`. A static value
-    is `deps=lambda ctx: value`. A resumed approved tool gets the same `deps`.
+    `async`. A static value is `deps=lambda ctx: value`. A resumed approved
+    tool gets the same `deps`.
   - Raises `TypeError` at construction for anything but a plain
     `pydantic_ai.Agent`: durable-execution wrappers (`TemporalAgent`,
     `DBOSAgent`, `PrefectAgent`) own a second durable store, which conflicts
@@ -72,9 +72,6 @@ start of each turn in case a validator was added later).
   capability on your agent approves natively gated tools without asking. Tools
   named in `approval_tools` (including MCP and other toolset tools)
   still pause.
-- **The policy covers your agent's own tools only.** `approval_tools`
-  doesn't reach the tools of an agent you delegate to: see
-  [subagents](#subagents).
 - **Provider-native tools** (web search, code execution) aren't journaled; the
   text answer is, so later turns don't see the tool call itself.
 - **Text only.** Non-text user input is stringified, and binary tool returns
@@ -86,7 +83,7 @@ start of each turn in case a validator was added later).
 - Pydantic AI's own UI adapters (`pydantic_ai.ui`) aren't used: Sectr serves
   AG-UI from the journal.
 
-## Subagents
+### Subagents
 
 A subagent is another agent your agent runs from a tool. On Sectr it's an
 ordinary tool, and an opaque one: the journal, and every client streaming the
@@ -112,8 +109,8 @@ async def escalate(ctx: RunContext, question: str) -> str:
 agent = Agent(model, tools=[Tool(escalate, requires_approval=True)])
 ```
 
-**Limits.** Where your own code starts the subagent or handles
-what it returns, the adapter can't see its run:
+Where your own code starts the subagent or handles what it returns, the
+adapter can't see its run:
 
 - **The policy doesn't reach a delegate's tools.** A tool
   `approval_tools` names on an agent your tool runs (`specialist.run(...)`)

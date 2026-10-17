@@ -121,9 +121,8 @@ source of truth next to the journal, so the adapter doesn't use one:
 - **Conversation state only.** Non-message state channels don't survive from
   one turn to the next. Keep state in the conversation — for example a
   `todo_write` tool whose journaled call *is* the write.
-- **Subagents**: see [subagents](#subagents).
 
-## Subagents
+### Subagents
 
 A subagent is another agent your agent runs from a tool. On Sectr it's an
 ordinary tool, and an opaque one: the journal, and every client streaming the
@@ -155,8 +154,8 @@ are rejected when the runner starts, and a gated call to any other tool in it
 (by the policy, or by the subgraph's own `HumanInTheLoopMiddleware`) ends the
 turn with `subagent_gated_tool`.
 
-**Limits.** Where your own code starts the subagent or handles
-what it returns, the adapter can't see its run:
+Where your own code starts the subagent or handles what it returns, the
+adapter can't see its run:
 
 - **Keep your graph's config when you pass one to a subagent.**
   LangChain passes your graph's config on to `specialist.ainvoke(...)` by
