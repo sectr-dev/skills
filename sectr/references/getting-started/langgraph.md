@@ -143,7 +143,7 @@ conversation survives deploys, restarts and scale-to-zero.
 
 That model has limits: ReAct-shaped graphs only, and messages are the only
 state that carries from one turn to the next. The
-[adapter reference](../sdk/adapters.md#langgraph) lists them, with how
+[adapter reference](../sdk/adapters/langgraph.md) lists them, with how
 the adapter works.
 
 ## Run, deploy, connect

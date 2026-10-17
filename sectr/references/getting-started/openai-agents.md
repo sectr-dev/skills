@@ -25,7 +25,7 @@ uv add "sectr[openai-agents]"
 ```
 
 `sectr[openai-agents]` brings in `openai-agents`, at a version the adapter is
-tested against (the [adapter reference](../sdk/adapters.md#openai-agents-sdk)
+tested against (the [adapter reference](../sdk/adapters/openai-agents.md)
 lists the range).
 
 ## Wire up the agent
@@ -90,7 +90,7 @@ your hooks, tracing, the run context and your `run_config`.
 
 To pass a run context, give the adapter a factory:
 `openai_agents(agent, context=lambda ctx: ...)`. The
-[adapter reference](../sdk/adapters.md#openai-agents-sdk) covers it,
+[adapter reference](../sdk/adapters/openai-agents.md) covers it,
 along with handoffs, subagents and the current limits.
 
 ## Run, deploy, connect

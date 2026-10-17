@@ -100,7 +100,7 @@ through an adapter from the `sectr` SDK:
 | No framework                                                     | Supported                                  | your own handler, `@app.agent_route("/chat")`, with tools from [`sectr.tools`](references/sdk/tools.md) | `uv add sectr`                                                                            |
 
 Each adapter supports most, not all, of its framework: the
-[adapter reference](references/sdk/adapters.md) lists what each one does and
+[adapter reference](references/sdk/adapters/index.md) lists what each one does and
 its limits (subagents, structured output, checkpointers and so on).
 
 ## Conceptual overview: how a Sectr app fits together
@@ -342,7 +342,7 @@ Any of these, and they can be mixed:
   ```
 
 Sectr pauses all of these itself: see
-[how the LangGraph adapter works](references/sdk/adapters.md#langgraph).
+[how the LangGraph adapter works](references/sdk/adapters/langgraph.md).
 
 #### No framework
 
@@ -401,7 +401,10 @@ Deeper material lives in `references/`, one file per docs page:
 | **Send a message**: Create a session, add follow-up turns — 202 means scheduled. | references/api/send-message.md |
 | **Stream a session**: The SSE journal tail — every frame is a journal event, resumption is Last-Event-ID. | references/api/stream.md |
 | **CLI reference**: Every sectr command, generated from the built binary. | references/cli.md |
-| **Framework adapters**: sectr.adapters — run framework agents on the platform contract. | references/sdk/adapters.md |
+| **Framework adapters**: sectr.adapters — one adapter per supported framework, each on its own page. | references/sdk/adapters/index.md |
+| **LangGraph adapter**: sectr.adapters.langgraph — serve a LangGraph graph: its signatures, behavior, the graphs it supports, how it works, and its limits. | references/sdk/adapters/langgraph.md |
+| **OpenAI Agents SDK adapter**: sectr.adapters.openai_agents — serve an OpenAI Agents SDK agent: its signature, behavior, handoffs, subagents and limits. | references/sdk/adapters/openai-agents.md |
+| **Pydantic AI adapter**: sectr.adapters.pydantic_ai — serve a Pydantic AI agent: its signature, behavior, output types and limits. | references/sdk/adapters/pydantic-ai.md |
 | **AgentApp**: The route registry and manifest source — the one sectr object your project exposes. | references/sdk/app.md |
 | **SessionContext**: The one argument every handler receives — transcript, reason, tools, messages. | references/sdk/context.md |
 | **Events**: The runner-emittable event types — what handlers yield. | references/sdk/events.md |

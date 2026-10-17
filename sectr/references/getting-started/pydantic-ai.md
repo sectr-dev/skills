@@ -133,7 +133,7 @@ the [`SessionContext`](../sdk/context.md) (it may be `async`), and a
 resumed approved tool receives the same `deps`.
 
 Its limits (text output only for now, output validators, auto-approvers) are
-in the [adapter reference](../sdk/adapters.md#pydantic-ai), with how the
+in the [adapter reference](../sdk/adapters/pydantic-ai.md), with how the
 adapter works.
 
 ## Run, deploy, connect
