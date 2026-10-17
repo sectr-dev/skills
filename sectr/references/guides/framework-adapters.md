@@ -23,19 +23,6 @@ The journal only stores Sectr's own event vocabulary, never framework
 internals, which is what makes the dashboard, the session stream and every
 other client the same whichever framework you use.
 
-## Support matrix
-
-| Framework                                                | Status                                     | Serve it with                                                                                   | Add to a project                                                                          |
-| -------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [OpenAI Agents SDK](../getting-started/openai-agents.md) | Supported                                  | `openai_agents(agent)`, from `sectr.adapters.openai_agents`                                     | `uv add "sectr[openai-agents]"`                                                           |
-| [LangGraph](../getting-started/langgraph.md)             | Supported, for ReAct-shaped graphs         | `langgraph(graph)`, from `sectr.adapters.langgraph`                                             | `uv add "sectr[langgraph]"`                                                               |
-| [Pydantic AI](../getting-started/pydantic-ai.md)         | Supported, for a plain `pydantic_ai.Agent` | `pydantic_ai(agent)`, from `sectr.adapters.pydantic_ai`                                         | `uv add "sectr[pydantic-ai]"`, plus a model provider such as `"pydantic-ai-slim[openai]"` |
-| No framework                                             | Supported                                  | your own handler, `@app.agent_route("/chat")`, with tools from [`sectr.tools`](../sdk/tools.md) | `uv add sectr`                                                                            |
-
-Each adapter supports most, not all, of its framework: the
-[adapter reference](../sdk/adapters.md) lists what each one does and
-its limits (subagents, structured output, checkpointers and so on).
-
 ## Which to pick
 
 - **The OpenAI Agents SDK** if your agent is already built on it. Start with

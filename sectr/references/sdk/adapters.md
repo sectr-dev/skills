@@ -1,8 +1,8 @@
 # Framework adapters
 
-An adapter wraps the agent you define using a 3rd party agent framework, so that it
-runs out of the box on Sectr. Your agent code stays 100% framework code - zero platform
-concepts leak in.
+Each adapter's signature, behavior and limits. For what an adapter does,
+which frameworks are supported and how to install each, see
+[choosing a framework](../guides/framework-adapters.md).
 
 ## OpenAI Agents SDK
 
@@ -17,8 +17,8 @@ app = AgentApp(name="support-agent")
 app.add_route("/chat", openai_agents(agent))
 ```
 
-- Installation: `uv add sectr[openai-agents]` (supports `openai-agents` 0.22.0
-  through 0.23.1; newer releases are added as they're tested)
+- Requires `openai-agents` 0.22.0 through 0.23.1 (newer releases are added as
+  they're tested). To install, see the [support matrix](../../SKILL.md#supported-agent-frameworks).
 - Signature: `openai_agents(agent, *, model=None, run_config=None, context=None)`
   - `context` is a **factory** called once per invocation with the
     [`SessionContext`](context.md), sync or `async`. Its value
@@ -79,7 +79,8 @@ app = AgentApp(name="support-agent")
 app.add_route("/chat", langgraph(graph))
 ```
 
-- Installation: `uv add sectr[langgraph]` (requires `langgraph>=1.2.11`, `langgraph-prebuilt>=1.1.0`, `langchain-core>=1.6.6`)
+- Requires `langgraph>=1.2.11`, `langgraph-prebuilt>=1.1.0` and
+  `langchain-core>=1.6.6`. To install, see the [support matrix](../../SKILL.md#supported-agent-frameworks).
 - Signatures:
   - `langgraph(graph, *, context=None) -> Handler` — wraps a compiled graph.
     Raises `ValueError` at construction (before the first turn) for
@@ -193,9 +194,8 @@ app = AgentApp(name="support-agent")
 app.add_route("/chat", pydantic_ai(agent))
 ```
 
-- Installation: `uv add "sectr[pydantic-ai]" "pydantic-ai-slim[openai]"` (requires
-  `pydantic-ai-slim>=2.54`; the extra pulls in no model provider, so add the one
-  you use).
+- Requires `pydantic-ai-slim>=2.54`. `sectr[pydantic-ai]` pulls in no model
+  provider, so add the one you use. To install, see the [support matrix](../../SKILL.md#supported-agent-frameworks).
 - Signature: `pydantic_ai(agent, *, model=None, deps=None, model_settings=None, usage_limits=None) -> Handler`
   - `model`, `model_settings` and `usage_limits` pass through to `agent.iter`;
     `model` is for deterministic fakes.
