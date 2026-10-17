@@ -16,7 +16,7 @@ tool name, arguments, and reason directly from the payload. Per-session
 status also flips to `awaiting_approval` (visible in `GET /sessions/{id}`
 and `GET /sessions`).
 
-Full schema: [`GET /approvals`](openapi.json).
+Full schema: `GET /approvals` (look it up with `jq '.paths["/approvals"].get' references/api/openapi.json`).
 
 ## Decide — `POST /sessions/{id}/approval`
 
@@ -45,4 +45,4 @@ resume is scheduled; the resumed turn streams on the same
 ended). **404** = unknown session. Decide exactly once — the decision is a
 journal event, not a setting.
 
-Full schema: [`POST /sessions/{sessionId}/approval`](openapi.json).
+Full schema: `POST /sessions/{sessionId}/approval` (look it up with `jq '.paths["/sessions/{sessionId}/approval"].post' references/api/openapi.json`).

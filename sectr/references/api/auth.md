@@ -80,4 +80,4 @@ curl -X POST https://api.sectr.dev/tokens \
 - Anonymous/guest apps: mint with a generated anonymous id bound to a
   cookie/localStorage.
 
-Full schema: [`POST /tokens`](openapi.json).
+Full schema: `POST /tokens` (look it up with `jq '.paths["/tokens"].post' references/api/openapi.json`).

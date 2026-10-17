@@ -31,7 +31,7 @@ curl -X POST https://api.sectr.dev/sessions \
 
 Creating the session starts executing your agent immediately.
 
-Full schema: [`POST /sessions`](openapi.json).
+Full schema: `POST /sessions` (look it up with `jq '.paths["/sessions"].post' references/api/openapi.json`).
 
 ## Follow-up turns — `POST /sessions/{id}/input`
 
@@ -48,4 +48,4 @@ approval decision (decide it first — a new message would strand the
 unanswered tool call), or ended. A 409 after an *errored* turn is
 deliberately impossible: sending a fresh message is the recovery path.
 
-Full schema: [`POST /sessions/{sessionId}/input`](openapi.json).
+Full schema: `POST /sessions/{sessionId}/input` (look it up with `jq '.paths["/sessions/{sessionId}/input"].post' references/api/openapi.json`).

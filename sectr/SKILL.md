@@ -403,7 +403,7 @@ Deeper material lives in `references/`, one file per docs page:
 | **Limits**: Concurrency, capacity and rate limits on the Sectr API, the 429 error codes, and how to retry. | references/api/limits.md |
 | **Send a message**: Create a session, add follow-up turns — 202 means scheduled. | references/api/send-message.md |
 | **Stream a session**: The SSE journal tail — every frame is a journal event, resumption is Last-Event-ID. | references/api/stream.md |
-| **OpenAPI spec**: every operation's exact request and response schemas. A link to it names an operation, like `POST /sessions`. Look up what you need rather than reading it whole: `jq '.paths \| keys' references/api/openapi.json` lists the endpoints, `jq '.paths["/sessions/{sessionId}/approval"].post' references/api/openapi.json` shows one, and `jq '.components.schemas.ApprovalDecision' references/api/openapi.json` resolves a `$ref` it names. | references/api/openapi.json |
+| **OpenAPI spec**: every operation's exact request and response schemas; look up what you need with `jq` (below). | references/api/openapi.json |
 | **CLI reference**: Every sectr command, generated from the built binary. | references/cli.md |
 | **Framework adapters**: sectr.adapters — one adapter per supported framework, each on its own page. | references/sdk/adapters/index.md |
 | **LangGraph adapter**: sectr.adapters.langgraph — serve a LangGraph graph: its signatures, behavior, the graphs it supports, and its limits. | references/sdk/adapters/langgraph.md |
@@ -413,3 +413,5 @@ Deeper material lives in `references/`, one file per docs page:
 | **SessionContext**: The argument of a handler without a framework: the conversation, why the turn started, and running tools. | references/sdk/no-framework/context.md |
 | **No framework**: Write the agent loop yourself: a handler that reads the conversation, calls the model, and yields the events Sectr journals. | references/sdk/no-framework/index.md |
 | **Tools**: sectr.tools: tools from plain functions, for agents without a framework and for LangGraph. | references/sdk/tools.md |
+
+The OpenAPI spec is large. Look up what you need rather than reading it whole: `jq '.paths | keys' references/api/openapi.json` lists the endpoints, `jq '.paths["/sessions/{sessionId}/approval"].post' references/api/openapi.json` shows one, and `jq '.components.schemas.ApprovalDecision' references/api/openapi.json` resolves a `$ref` it names.

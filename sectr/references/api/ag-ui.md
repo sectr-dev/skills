@@ -20,8 +20,8 @@ conversations the sessions API serves.
 | `POST`           | **Run**: start one turn and stream it.                                                                       |
 | `GET ?threadId=` | **Reconnect**: re-stream the thread's latest run, read-only. A Sectr extension (AG-UI 1.0 has no reconnect). |
 
-Full schemas: [`POST /ag-ui/{app}/{route}`](openapi.json) and
-[`GET /ag-ui/{app}/{route}`](openapi.json).
+Full schemas: `POST /ag-ui/{app}/{route}` (look it up with `jq '.paths["/ag-ui/{app}/{route}"].post' references/api/openapi.json`) and
+`GET /ag-ui/{app}/{route}` (look it up with `jq '.paths["/ag-ui/{app}/{route}"].get' references/api/openapi.json`).
 
 ## Run — `POST`
 

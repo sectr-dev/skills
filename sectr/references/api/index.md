@@ -3,26 +3,29 @@
 Any client - a web frontend, a mobile app, a script - drives a deployed
 agent over the Sectr HTTP API. See the [full reference](openapi.json) for complete details.
 
+The full reference is `references/api/openapi.json`: every operation's exact request and response schemas. Look up what you need rather than reading it whole: `jq '.paths | keys' references/api/openapi.json` lists the endpoints, `jq '.paths["/sessions/{sessionId}/approval"].post' references/api/openapi.json` shows one, and `jq '.components.schemas.ApprovalDecision' references/api/openapi.json` resolves a `$ref` it names.
+
 ## The data plane APIs
 
-| Area      | Endpoints                                                                                                                         | Auth                                                              |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Sessions  | [`POST /sessions`](openapi.json), [`GET /sessions/{sessionId}`](openapi.json), [`POST /sessions/{sessionId}/input`](openapi.json) | user token (end users), invocation key (backend), or platform key |
-| Streaming | [`GET /sessions/{sessionId}/events`](openapi.json) (SSE)                                                                          | same as the session's                                             |
-| Approvals | [`POST /sessions/{sessionId}/approval`](openapi.json), [`GET /approvals`](openapi.json)                                           | decide: user token (own sessions) / keys; inbox: platform key     |
-| AG-UI     | [`POST /ag-ui/{app}/{route}`](openapi.json) (run), [`GET /ag-ui/{app}/{route}`](openapi.json) (reconnect, `?threadId=`)           | user token or invocation key                                      |
+| Area      | Endpoints                                                                               | Auth                                                              |
+| --------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Sessions  | `POST /sessions`, `GET /sessions/{sessionId}`, `POST /sessions/{sessionId}/input`       | user token (end users), invocation key (backend), or platform key |
+| Streaming | `GET /sessions/{sessionId}/events` (SSE)                                                | same as the session's                                             |
+| Approvals | `POST /sessions/{sessionId}/approval`, `GET /approvals`                                 | decide: user token (own sessions) / keys; inbox: platform key     |
+| AG-UI     | `POST /ag-ui/{app}/{route}` (run), `GET /ag-ui/{app}/{route}` (reconnect, `?threadId=`) | user token or invocation key                                      |
 
-Browser clients authenticate with a user token minted by your backend via
-[`POST /tokens`](openapi.json) (invocation key) — see [authentication](auth.md).
+Browser clients authenticate with a user token, which your backend mints
+with its invocation key via `POST /tokens` (look it up with `jq '.paths["/tokens"].post' references/api/openapi.json`);
+see [authentication](auth.md).
 
 ## The control plane APIs
 
-| Area        | Endpoints                                                                                                         | Auth         |
-| ----------- | ----------------------------------------------------------------------------------------------------------------- | ------------ |
-| Apps        | [`GET /apps`](openapi.json), [`GET /apps/{appId}`](openapi.json), [`GET /apps/{appId}/deployments`](openapi.json) | platform key |
-| Deployments | [`POST /deployments`](openapi.json), [`POST /deployments/{deploymentId}/activate`](openapi.json)                  | platform key |
-| Secrets     | [`PUT /secrets/{key}`](openapi.json), [`GET /secrets`](openapi.json), [`DELETE /secrets/{key}`](openapi.json)     | platform key |
-| API keys    | [`GET /api-keys`](openapi.json), [`POST /api-keys`](openapi.json), [`DELETE /api-keys/{keyId}`](openapi.json)     | platform key |
+| Area        | Endpoints                                                         | Auth         |
+| ----------- | ----------------------------------------------------------------- | ------------ |
+| Apps        | `GET /apps`, `GET /apps/{appId}`, `GET /apps/{appId}/deployments` | platform key |
+| Deployments | `POST /deployments`, `POST /deployments/{deploymentId}/activate`  | platform key |
+| Secrets     | `PUT /secrets/{key}`, `GET /secrets`, `DELETE /secrets/{key}`     | platform key |
+| API keys    | `GET /api-keys`, `POST /api-keys`, `DELETE /api-keys/{keyId}`     | platform key |
 
 ## API Base URLs
 

@@ -19,7 +19,7 @@ data: {"id":"…","seq":1,"type":"MESSAGE_DELTA","payload":{"delta":{"type":"tex
 - The stream **replays the full journal from seq 0**, then holds the tail
   open. A fresh client renders history itself, no separate read API.
 
-Full schema: [`GET /sessions/{sessionId}/events`](openapi.json).
+Full schema: `GET /sessions/{sessionId}/events` (look it up with `jq '.paths["/sessions/{sessionId}/events"].get' references/api/openapi.json`).
 
 ## Resumption — `Last-Event-ID`
 
