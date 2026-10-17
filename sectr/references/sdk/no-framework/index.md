@@ -4,7 +4,7 @@ Without a framework adapter, your agent is one async generator per route. It
 receives a [`SessionContext`](context.md) (the conversation so
 far, and why this turn started), calls your model, and yields events. Sectr
 journals them, streams them to clients, and rebuilds the conversation from
-them on the next turn. Tools come from [`sectr.tools`](tools.md).
+them on the next turn. Tools come from [`sectr.tools`](../tools.md).
 
 ## The handler
 
@@ -29,7 +29,7 @@ async def chat(ctx: SessionContext) -> AsyncIterator[RunnerEvent]:
   itself; there's no turn-end event to yield.
 - **Create model clients lazily**, inside the handler or on first use: Sectr
   imports your module before any secret is set (see
-  [your first agent](../../SKILL.md#serving-the-agent-on-a-route)).
+  [your first agent](../../../SKILL.md#serving-the-agent-on-a-route)).
 
 ## A turn
 
@@ -102,11 +102,11 @@ raises `ApprovalRequired` out of your handler, Sectr ends the turn with it.
 
 ## Tools and approvals
 
-Define tools with [`sectr.tools`](tools.md), and run them with
+Define tools with [`sectr.tools`](../tools.md), and run them with
 `ctx.execute(name, call_id=..., **arguments)`. On a gated tool, `ctx.execute`
 raises `ApprovalRequired`: let it propagate, and the turn suspends until
 someone approves or denies the call (see
-[approvals](../../SKILL.md#no-framework)).
+[approvals](../../../SKILL.md#no-framework)).
 
 To ask for approval for something no single tool expresses, call
 `await ctx.request_approval(name, arguments, reason=...)`: it raises

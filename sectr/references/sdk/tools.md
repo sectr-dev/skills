@@ -41,7 +41,7 @@ mostly used by adapters.
 
 ## Who uses it
 
-`sectr.tools` is for agents written [without a framework](no-framework.md),
+`sectr.tools` is for agents written [without a framework](no-framework/index.md),
 which run its tools with `ctx.execute`, and for LangGraph, which converts its
 tools with `as_langgraph_tool` (see the
 [LangGraph adapter](adapters/langgraph.md)). The OpenAI Agents SDK

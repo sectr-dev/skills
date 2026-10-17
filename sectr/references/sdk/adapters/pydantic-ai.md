@@ -20,8 +20,9 @@ app.add_route("/chat", pydantic_ai(agent))
 - Signature: `pydantic_ai(agent, *, model=None, deps=None, model_settings=None, usage_limits=None) -> Handler`
   - `model`, `model_settings` and `usage_limits` pass through to `agent.iter`;
     `model` is for deterministic fakes.
-  - `deps` is a **factory** called once per invocation with the
-    [`SessionContext`](../context.md), sync or `async`. A static value
+  - `deps` is a **factory** called once per invocation with the turn's
+    `SessionContext` (its `ctx.session_id` identifies the session), sync or
+    `async`. A static value
     is `deps=lambda ctx: value`. A resumed approved tool gets the same `deps`.
   - Raises `TypeError` at construction for anything but a plain
     `pydantic_ai.Agent`: durable-execution wrappers (`TemporalAgent`,

@@ -1,8 +1,9 @@
 # SessionContext
 
-`sectr.SessionContext` is the single argument of every handler. One
-`SessionContext` = one invocation: the rehydrated transcript plus the
-polymorphic reason that started it.
+`sectr.SessionContext` is the single argument of a [handler you write
+yourself](index.md) (adapters also pass it to your
+`context` or `deps` factory). One `SessionContext` = one invocation: the
+rehydrated transcript plus the polymorphic reason that started it.
 
 ## The reason — input and decision
 
@@ -34,7 +35,7 @@ state; hand-written loops feed it straight to a provider.
 - **On an approval resume,** the conversation ends with the unanswered tool
   call, as the model left it: append its result.
 - **After a compaction,** the conversation starts from the snapshot (see
-  [compaction](no-framework.md#compaction)).
+  [compaction](index.md#compaction)).
 
 ## Approval resume helpers
 

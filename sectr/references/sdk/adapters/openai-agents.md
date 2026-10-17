@@ -14,8 +14,9 @@ app.add_route("/chat", openai_agents(agent))
 - Requires `openai-agents` 0.22.0 through 0.23.1 (newer releases are added as
   they're tested). To install, see the [support matrix](../../../SKILL.md#supported-agent-frameworks).
 - Signature: `openai_agents(agent, *, model=None, run_config=None, context=None)`
-  - `context` is a **factory** called once per invocation with the
-    [`SessionContext`](../context.md), sync or `async`. Its value
+  - `context` is a **factory** called once per invocation with the turn's
+    `SessionContext` (its `ctx.session_id` identifies the session), sync or
+    `async`. Its value
     is the SDK's run context (`Runner.run_streamed(context=...)`): tools,
     hooks, guardrails and dynamic instructions read it as
     `RunContextWrapper.context`, and MCP tool filters see it too. A static

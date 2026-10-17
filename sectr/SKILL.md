@@ -3,14 +3,13 @@ name: sectr
 description: >-
   Build, run locally, and deploy AI agents on Sectr, a PaaS for hosting AI
   agents. Covers the sectr CLI (init, dev, send, tail, deploy, secrets, auth);
-  the sectr Python SDK (AgentApp, SessionContext, events, tools, and the
-  adapters for the OpenAI Agents SDK, LangGraph and Pydantic AI);
-  human-in-the-loop tool approvals; connecting a frontend over AG-UI
-  (CopilotKit); and the public HTTP API (sessions, SSE journal streaming,
-  approvals, AG-UI endpoints, limits). Use when writing or debugging a Sectr
-  agent, integrating the sectr SDK, deploying to Sectr Cloud, putting a chat UI
-  on a deployed agent, driving deployed agents over the HTTP API, or working
-  with Sectr concepts like journals, turns, and approvals.
+  the sectr Python SDK (AgentApp and the adapters for the OpenAI Agents SDK,
+  LangGraph and Pydantic AI); human-in-the-loop tool approvals; connecting a
+  frontend over AG-UI (CopilotKit); and the public HTTP API (sessions, SSE
+  journal streaming, approvals, AG-UI endpoints, limits). Use when writing or
+  debugging a Sectr agent, integrating the sectr SDK, deploying to Sectr Cloud,
+  putting a chat UI on a deployed agent, driving deployed agents over the HTTP
+  API, or working with Sectr concepts like journals, turns, and approvals.
 ---
 
 
@@ -97,7 +96,7 @@ through an adapter from the `sectr` SDK:
 | [OpenAI Agents SDK](references/getting-started/openai-agents.md) | Supported                                  | `openai_agents(agent)`, from `sectr.adapters.openai_agents`                                             | `uv add "sectr[openai-agents]"`                                                           |
 | [LangGraph](references/getting-started/langgraph.md)             | Supported, for ReAct-shaped graphs         | `langgraph(graph)`, from `sectr.adapters.langgraph`                                                     | `uv add "sectr[langgraph]"`                                                               |
 | [Pydantic AI](references/getting-started/pydantic-ai.md)         | Supported, for a plain `pydantic_ai.Agent` | `pydantic_ai(agent)`, from `sectr.adapters.pydantic_ai`                                                 | `uv add "sectr[pydantic-ai]"`, plus a model provider such as `"pydantic-ai-slim[openai]"` |
-| [No framework](references/sdk/no-framework.md)                   | Supported                                  | your own handler, `@app.agent_route("/chat")`, with tools from [`sectr.tools`](references/sdk/tools.md) | `uv add sectr`                                                                            |
+| [No framework](references/sdk/no-framework/index.md)             | Supported                                  | your own handler, `@app.agent_route("/chat")`, with tools from [`sectr.tools`](references/sdk/tools.md) | `uv add sectr`                                                                            |
 
 Each adapter supports most, not all, of its framework: the
 [adapter reference](references/sdk/adapters/index.md) lists what each one does and
@@ -410,6 +409,6 @@ Deeper material lives in `references/`, one file per docs page:
 | **OpenAI Agents SDK adapter**: sectr.adapters.openai_agents — serve an OpenAI Agents SDK agent: its signature, behavior, handoffs, subagents and limits. | references/sdk/adapters/openai-agents.md |
 | **Pydantic AI adapter**: sectr.adapters.pydantic_ai — serve a Pydantic AI agent: its signature, behavior, output types and limits. | references/sdk/adapters/pydantic-ai.md |
 | **AgentApp**: The route registry and manifest source — the one sectr object your project exposes. | references/sdk/app.md |
-| **SessionContext**: The one argument every handler receives — transcript, reason, tools, messages. | references/sdk/context.md |
-| **No framework**: Write the agent loop yourself: a handler that reads the conversation, calls the model, and yields the events Sectr journals. | references/sdk/no-framework.md |
+| **SessionContext**: The argument of a handler without a framework: the conversation, why the turn started, and running tools. | references/sdk/no-framework/context.md |
+| **No framework**: Write the agent loop yourself: a handler that reads the conversation, calls the model, and yields the events Sectr journals. | references/sdk/no-framework/index.md |
 | **Tools**: sectr.tools: tools from plain functions, for agents without a framework and for LangGraph. | references/sdk/tools.md |

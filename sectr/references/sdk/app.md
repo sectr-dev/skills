@@ -20,7 +20,7 @@ Serves `handler` on `path`. With a framework, the handler is the adapter's:
 ## `@app.agent_route(path)`
 
 The decorator form, for a handler of your own: see
-[no framework](no-framework.md).
+[no framework](no-framework/index.md).
 
 Paths must start with `/` and be unique in the app: Sectr routes sessions by
 `(app, path)`. Registering a bad or duplicate path raises `ValueError`.

@@ -127,9 +127,9 @@ history.** Every turn is a fresh `agent.iter(...)` whose `message_history` is
 rebuilt from the session's transcript, so a conversation survives deploys,
 restarts and scale-to-zero. Nothing needs serializing between turns.
 
-To pass `deps`, give the adapter a factory:
+To pass `deps`, give the adapter a factory, sync or `async`:
 `pydantic_ai(agent, deps=lambda ctx: ...)` calls it once per invocation with
-the [`SessionContext`](../sdk/context.md) (it may be `async`), and a
+the turn's `SessionContext` (`ctx.session_id` identifies the session), and a
 resumed approved tool receives the same `deps`.
 
 Its limits (text output only for now, output validators, auto-approvers) are

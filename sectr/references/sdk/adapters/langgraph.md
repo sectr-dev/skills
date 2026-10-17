@@ -25,8 +25,9 @@ app.add_route("/chat", langgraph(graph))
   - `langgraph(graph, *, context=None) -> Handler` — wraps a compiled graph.
     Raises `ValueError` at construction (before the first turn) for
     unsupported graph shapes.
-    - `context` is a **factory** called once per invocation with the
-      [`SessionContext`](../context.md), sync or `async`. Its value
+    - `context` is a **factory** called once per invocation with the turn's
+      `SessionContext` (its `ctx.session_id` identifies the session), sync or
+      `async`. Its value
       is the graph's runtime context (`astream(context=...)`): tools read it as
       `runtime.context` (`ToolRuntime`), and nodes and middleware as
       `Runtime.context`. A static value is `context=lambda ctx: value`. A
