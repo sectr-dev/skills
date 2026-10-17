@@ -71,7 +71,7 @@ clear error instead:
 - a graph compiled with a checkpointer (the journal is the only state store);
 - sectr tools in several `ToolNode`s (multi-agent and supervisor graphs), or
   in a `ToolNode` nested in a subgraph (the error names `subagent_gated_tool`:
-  see [subagents](../../guides/subagents.md));
+  see [subagents](#subagents));
 - a sectr tool that takes graph-injected arguments (`InjectedState`,
   `InjectedStore`, `ToolRuntime`);
 - a gated sectr tool called from your own tool node instead of a `ToolNode`,
@@ -120,5 +120,49 @@ source of truth next to the journal, so the adapter doesn't use one:
 - **Conversation state only.** Non-message state channels don't survive from
   one turn to the next. Keep state in the conversation — for example a
   `todo_write` tool whose journaled call *is* the write.
-- **Subagents** are opaque tools, and a gated tool inside one isn't
-  supported. See [subagents](../../guides/subagents.md).
+- **Subagents**: see [subagents](#subagents).
+
+## Subagents
+
+The rules are the same in every framework (see [subagents](../../guides/subagents.md)):
+a subagent is an opaque tool, which can be gated as a whole, but a gated tool
+inside one isn't supported. An `escalate` tool that runs a `specialist` agent,
+gated as a whole:
+
+```python
+specialist = create_agent(model, tools=[as_langgraph_tool(track_parcel)], name="specialist")
+
+@tool(needs_approval=True)  # sectr.tools.tool
+async def escalate(question: str) -> str:
+    """Escalate a question to the shipping specialist."""
+    result = await specialist.ainvoke({"messages": [{"role": "user", "content": question}]})
+    return result["messages"][-1].text
+
+graph = create_agent(model, tools=[as_langgraph_tool(escalate)])
+```
+
+A LangGraph subgraph used as a node is treated the same way: sectr tools in it
+are rejected when the runner starts, and a gated call to any other tool in it
+(by the policy, or by the subgraph's own `HumanInTheLoopMiddleware`) ends the
+turn with `subagent_gated_tool`.
+
+**Limits.** Where your own code starts the subagent or handles
+what it returns, the adapter can't see its run:
+
+- **Keep your graph's config when you pass one to a subagent.**
+  LangChain passes your graph's config on to `specialist.ainvoke(...)` by
+  itself, and the adapter uses it to tell the subagent's run from your graph's.
+  A config you pass merges with it, except `configurable`, which replaces it
+  whole. To add your own values, extend the inherited ones:
+
+  ```python
+  from langgraph.config import get_config
+
+  configurable = {**get_config()["configurable"], "thread_id": thread_id}
+  result = await specialist.ainvoke(messages, {"configurable": configurable})
+  ```
+
+  Without them, a gated tool inside the subagent still doesn't run, but the
+  turn's `ERROR` is `langgraph_unmatched_approval` instead of
+  `subagent_gated_tool`. The same happens if a task started before the turn,
+  such as a background worker, runs the subagent.

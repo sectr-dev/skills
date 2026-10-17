@@ -3,13 +3,6 @@
 Any client - a web frontend, a mobile app, a script - drives a deployed
 agent over the Sectr HTTP API. See the [full reference](https://docs.sectr.dev/reference/api-spec/) for complete details.
 
-## The primary concept
-
-The **journal is the only source of truth**. A session is an append-only
-event log; every "live" view - including the chat stream - is a tail of that journal.
-This makes reconnecting (`Last-Event-ID`) trivially correct and produces a fully auditable
-and debuggable transcript.
-
 ## The data plane APIs
 
 | Area      | Endpoints                                                           | Auth                                                              |
@@ -43,5 +36,5 @@ Browser clients authenticate with a user token minted by your backend via
 3. [Stream a session](stream.md) — the SSE tail + resumption
 4. [Approve or deny from your UI](approvals.md)
 5. [AG-UI endpoint](ag-ui.md) — CopilotKit and other AG-UI clients
-6. [Deploy lifecycle](deploy-lifecycle.md)
+6. [Deploy lifecycle](https://docs.sectr.dev/reference/api/deploy-lifecycle/)
 7. [Limits](limits.md) — concurrency, rate limits, and the `429` codes

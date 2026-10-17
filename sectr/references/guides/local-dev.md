@@ -2,22 +2,8 @@
 
 ## The loop
 
-```text
-Run the app locally end-to-end: SQLite journal, subprocess runner, gateway for clients. See `dev --help`
-
-Usage: sectr dev [OPTIONS]
-
-Options:
-      --path <PATH>            Project directory (must contain sectr.toml) [default: .]
-      --config <CONFIG>        Config file path (relative to --path) [default: sectr.toml]
-      --no-open                Don't open the dashboard (CI / containers)
-      --dashboard <DASHBOARD>  Dashboard to open (the deployed console by default; point it at a local `next dev` when working on the dashboard itself) [env: SECTR_DASHBOARD_URL=] [default: https://app.sectr.dev]
-      --port <PORT>            Gateway port. Default: the port this project used last, else 8420. A port given here is strict: if it's busy, `sectr dev` exits
-  -h, --help                   Print help
-
-```
-
-`sectr dev` is the local engine in one terminal:
+`sectr dev` is the local engine in one terminal (its options are in the
+[CLI reference](../cli.md#sectr-dev)):
 
 - **SQLite journal + subprocess runner + gateway** — the same turn-based
   model as production, on your machine. Sessions, approvals, and the SSE

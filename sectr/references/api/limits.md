@@ -46,10 +46,3 @@ last slot at the same moment, an empty session is left behind; it appears in
 Wait at least `Retry-After` seconds, then retry the same request, with a
 little jitter. Don't retry in a tight loop. In a browser UI, surface a
 "busy, retrying…" state rather than an error.
-
-## Signup
-
-Sectr caps the number of beta accounts. When the cap is reached, signup
-returns `403` with `{"error": "...", "code": "beta_full"}`. Join the waitlist
-at [sectr.dev/alpha](https://sectr.dev/alpha). Existing accounts are
-unaffected.

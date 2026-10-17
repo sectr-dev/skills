@@ -32,7 +32,3 @@ curl -N "https://api.sectr.dev/sessions/$SESSION_ID/events" \
 Replay restarts strictly after that event: exactly-once
 delivery, no gaps, no duplicates. First connect can pass the same value as
 the `last_event_id` query parameter instead of the header.
-
-## TypeScript
-
-> **🚧 Under Construction 🚧**: Frontend code for connecting to the Sectr API is coming soon!

@@ -73,7 +73,7 @@ start of each turn in case a validator was added later).
   still pause.
 - **The policy covers your agent's own tools only.** `approval_tools`
   doesn't reach the tools of an agent you delegate to: see
-  [subagents](../../guides/subagents.md).
+  [subagents](#subagents).
 - **Provider-native tools** (web search, code execution) aren't journaled; the
   text answer is, so later turns don't see the tool call itself.
 - **Text only.** Non-text user input is stringified, and binary tool returns
@@ -84,3 +84,33 @@ start of each turn in case a validator was added later).
   and is not journaled as a compaction.
 - Pydantic AI's own UI adapters (`pydantic_ai.ui`) aren't used: Sectr serves
   AG-UI from the journal.
+
+## Subagents
+
+The rules are the same in every framework (see [subagents](../../guides/subagents.md)):
+a subagent is an opaque tool, which can be gated as a whole, but a gated tool
+inside one isn't supported. An `escalate` tool that runs a `specialist` agent,
+gated as a whole:
+
+```python
+specialist = Agent(model, instructions="...", tools=[track_parcel])
+
+async def escalate(ctx: RunContext, question: str) -> str:
+    """Escalate a question to the shipping specialist."""
+    result = await specialist.run(question, usage=ctx.usage)
+    return result.output
+
+agent = Agent(model, tools=[Tool(escalate, requires_approval=True)])
+```
+
+**Limits.** Where your own code starts the subagent or handles
+what it returns, the adapter can't see its run:
+
+- **`Approval_tools` doesn't reach a delegate's tools.**
+  A tool the policy names on an agent your tool runs (`specialist.run(...)`)
+  runs **without approval**. Gate the delegating tool instead.
+- **A delegate that allows `DeferredToolRequests` doesn't fail
+  the turn.** A delegate with `output_type=[str, DeferredToolRequests]` hands
+  a gated tool's requests back to your tool instead of raising. The gated tool
+  doesn't run, but the turn carries on with whatever your tool returns. Gate
+  the delegating tool instead.

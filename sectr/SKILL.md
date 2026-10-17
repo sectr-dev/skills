@@ -97,7 +97,7 @@ through an adapter from the `sectr` SDK:
 | [OpenAI Agents SDK](references/getting-started/openai-agents.md) | Supported                                  | `openai_agents(agent)`, from `sectr.adapters.openai_agents`                                             | `uv add "sectr[openai-agents]"`                                                           |
 | [LangGraph](references/getting-started/langgraph.md)             | Supported, for ReAct-shaped graphs         | `langgraph(graph)`, from `sectr.adapters.langgraph`                                                     | `uv add "sectr[langgraph]"`                                                               |
 | [Pydantic AI](references/getting-started/pydantic-ai.md)         | Supported, for a plain `pydantic_ai.Agent` | `pydantic_ai(agent)`, from `sectr.adapters.pydantic_ai`                                                 | `uv add "sectr[pydantic-ai]"`, plus a model provider such as `"pydantic-ai-slim[openai]"` |
-| No framework                                                     | Supported                                  | your own handler, `@app.agent_route("/chat")`, with tools from [`sectr.tools`](references/sdk/tools.md) | `uv add sectr`                                                                            |
+| [No framework](references/sdk/no-framework.md)                   | Supported                                  | your own handler, `@app.agent_route("/chat")`, with tools from [`sectr.tools`](references/sdk/tools.md) | `uv add sectr`                                                                            |
 
 Each adapter supports most, not all, of its framework: the
 [adapter reference](references/sdk/adapters/index.md) lists what each one does and
@@ -255,6 +255,12 @@ live HTTP endpoint. The dashboard URL shows the deployed app. The last line
 is the route's [AG-UI](https://docs.ag-ui.com) endpoint, what a chat frontend
 connects to.
 
+Each `sectr deploy` makes a new version of the app. New sessions run on the
+newest version that built successfully; a session already under way keeps
+the version it started on, so a deploy never interrupts a conversation. To
+roll back, use **Rollback to this deployment** on the app's page in the
+dashboard.
+
 Then give the deployed app its key, and chat with it:
 
 ```sh
@@ -388,14 +394,12 @@ Deeper material lives in `references/`, one file per docs page:
 | **Using LangGraph**: Serve a LangGraph agent on Sectr — streaming, approvals and durable sessions for your graph, with no checkpointer to run. | references/getting-started/langgraph.md |
 | **Using the OpenAI Agents SDK**: Serve an OpenAI Agents SDK agent on Sectr — streaming, native tool approvals and durable sessions, with the agent unchanged. | references/getting-started/openai-agents.md |
 | **Using Pydantic AI**: Serve a Pydantic AI agent on Sectr — streaming, native tool approvals and durable sessions, resumed from the journal alone. | references/getting-started/pydantic-ai.md |
-| **Compaction**: Keep long-running conversations inside the context window — TRANSCRIPT_COMPACTED and the positional fold. | references/guides/compaction.md |
 | **Local dev**: The sectr dev loop — local engine, gateway, dashboard, send/tail. | references/guides/local-dev.md |
 | **Secrets**: Write-only secrets for deployed agents — set, list, remove, and how they reach your code. | references/guides/secrets.md |
 | **Subagents**: A subagent is another agent your agent runs from a tool — what works on Sectr, and the one thing that doesn't yet. | references/guides/subagents.md |
 | **AG-UI endpoint**: Every deployed route is an AG-UI 1.0 endpoint — run a turn with POST, reconnect with GET. Requests, events, approvals, auth and errors. | references/api/ag-ui.md |
 | **Approve or deny actions**: The approvals inbox endpoints — decide pending tool calls from your own frontend. | references/api/approvals.md |
 | **Authentication**: Platform keys, invocation keys, user tokens, and the session cookie — which principal for which endpoint. | references/api/auth.md |
-| **Deploy lifecycle**: Upload, build, activate, roll back — the 202 + polling contract. | references/api/deploy-lifecycle.md |
 | **API overview**: The public HTTP API — one event journal, SSE tails, and a handful of verbs. | references/api/index.md |
 | **Limits**: Concurrency, capacity and rate limits on the Sectr API, the 429 error codes, and how to retry. | references/api/limits.md |
 | **Send a message**: Create a session, add follow-up turns — 202 means scheduled. | references/api/send-message.md |
@@ -407,7 +411,5 @@ Deeper material lives in `references/`, one file per docs page:
 | **Pydantic AI adapter**: sectr.adapters.pydantic_ai — serve a Pydantic AI agent: its signature, behavior, output types and limits. | references/sdk/adapters/pydantic-ai.md |
 | **AgentApp**: The route registry and manifest source — the one sectr object your project exposes. | references/sdk/app.md |
 | **SessionContext**: The one argument every handler receives — transcript, reason, tools, messages. | references/sdk/context.md |
-| **Events**: The runner-emittable event types — what handlers yield. | references/sdk/events.md |
-| **SDK reference**: The sectr Python SDK — modules, mental model, install. | references/sdk/index.md |
-| **sectr.server**: The invoke-contract adapter — how your AgentApp becomes POST /invocations. | references/sdk/server.md |
-| **Tools**: Framework-free tool registration and approval gating — sectr.tools. | references/sdk/tools.md |
+| **No framework**: Write the agent loop yourself: a handler that reads the conversation, calls the model, and yields the events Sectr journals. | references/sdk/no-framework.md |
+| **Tools**: sectr.tools: tools from plain functions, for agents without a framework and for LangGraph. | references/sdk/tools.md |

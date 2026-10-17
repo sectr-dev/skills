@@ -18,8 +18,6 @@ async def refund(order_id: str) -> str:
     return f"Refunded {order_id}"
 ```
 
-(Snippet: `examples/raw/tools.py` — the conformance fixture.)
-
 ## What `@tool` builds
 
 - **`name`** — from the function name (`@tool(name="…")` to override).
@@ -33,28 +31,18 @@ async def refund(order_id: str) -> str:
 
 ## Approval gating
 
-A tool is gated when **either** applies:
+`@tool(needs_approval=True)` gates a tool: calling it raises
+`sectr.tools.ApprovalRequired`, and the turn suspends until someone approves
+or denies the call. The deployment's `approval_tools` can gate any tool too.
+[Approvals](../../SKILL.md#defining-gated-tools) covers both.
 
-1. **Code marking** — `@tool(needs_approval=True)`.
-2. **Platform policy** — `approval_tools` under `[deploy]` in `sectr.toml`
-   gates tools declaratively, as policy-directed configuration rather than
-   in the agent's code. Sectr passes the
-   list to the runner as `SECTR_APPROVAL_POLICY` (a JSON list of tool
-   names), where the SDK reads it; setting that variable yourself is an
-   error. See
-   [gate by deployment config](../../SKILL.md#marking-as-gated-in-deployment-config).
+`is_gated(name)` and `get_tool(name)` are the lookup half of the registry,
+mostly used by adapters.
 
-A gated call raises `sectr.tools.ApprovalRequired`, which the adapter
-converts into the final `ToolApprovalRequired` event — the turn suspends.
-See [approvals](../../SKILL.md#defining-gated-tools) for the full flow, and
-[`SessionContext.execute`](context.md) for how the decision
-returns.
+## Who uses it
 
-`is_gated(name)` and `get_tool(name)` are the lookup half of the registry —
-mostly adapter machinery, exposed for completeness.
-
-> **Frameworks bypass this module**: Frameworks with native HITL — openai-agents `needs_approval`, claude-code
-> permission modes — keep their own tool definitions; the adapter maps their
-> interruption onto the same platform contract. `sectr.tools` is for
-> hand-rolled agents (the raw example) and as the gating vocabulary the
-> platform policy targets.
+`sectr.tools` is for agents written [without a framework](no-framework.md),
+which run its tools with `ctx.execute`, and for LangGraph, which converts its
+tools with `as_langgraph_tool` (see the
+[LangGraph adapter](adapters/langgraph.md)). The OpenAI Agents SDK
+and Pydantic AI define tools their own way, with their own approval flags.
