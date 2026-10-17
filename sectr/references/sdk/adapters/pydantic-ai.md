@@ -50,36 +50,42 @@ undecided ones back until their turn. The adapter itself executes nothing,
 and sibling calls that already finished aren't re-run. See
 [approvals](../../../SKILL.md#defining-gated-tools).
 
-## Output types
-
-Structured output isn't supported yet: an `output_type`
-other than `str` (a model, `ToolOutput`, `NativeOutput`, ...) fails
-`pydantic_ai(agent)` with a `ValueError`, and the agent's answer is journaled
-as text. Pausing needs `DeferredToolRequests` among the run's output types.
-Sectr adds it, unless your agent already lists it. If your agent has
-`@agent.output_validator`s, Pydantic AI refuses a per-run output type, so
-declare `output_type=[str, DeferredToolRequests]` (or `str | DeferredToolRequests`) on the agent yourself;
-otherwise the adapter raises a `ValueError` (at construction, and again at the
-start of each turn in case a validator was added later).
+**You don't need to add `DeferredToolRequests` to your output types.** Pausing
+needs it among the run's output types, and Sectr adds it to each run for you.
+The one exception is an agent with `@agent.output_validator`s: Pydantic AI
+refuses a per-run output type then, so declare
+`output_type=[str, DeferredToolRequests]` (or `str | DeferredToolRequests`)
+on the agent yourself. Otherwise the adapter raises a `ValueError`, at
+construction and again at the start of each turn (in case a validator was
+added later).
 
 ## Limits to know about
+
+- **Structured output isn't supported yet.** An `output_type` other than
+  `str` (a model, `ToolOutput`, `NativeOutput`, ...) fails `pydantic_ai(agent)`
+  with a `ValueError`. The agent's answer is journaled as text.
 
 - **External tool results aren't supported yet.** A tool that raises
   `CallDeferred` (or has `kind='external'`) ends the turn with an
   `ERROR` (`pydantic_ai_external_call`), because Sectr has no external
   tool-result path yet.
+
 - **Auto-approvers bypass your own gates.** A `HandleDeferredToolCalls`
   capability on your agent approves natively gated tools without asking. Tools
   named in `approval_tools` (including MCP and other toolset tools)
   still pause.
+
 - **Provider-native tools** (web search, code execution) aren't journaled; the
   text answer is, so later turns don't see the tool call itself.
+
 - **Text only.** Non-text user input is stringified, and binary tool returns
   or follow-up user content from `ToolReturn(content=...)` aren't journaled
   faithfully.
+
 - **Compaction.** `history_processors` still run on the rebuilt history, so
   stateless trimming works. A summarizing processor re-summarizes every turn
   and is not journaled as a compaction.
+
 - Pydantic AI's own UI adapters (`pydantic_ai.ui`) aren't used: Sectr serves
   AG-UI from the journal.
 

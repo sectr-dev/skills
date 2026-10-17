@@ -407,7 +407,7 @@ Deeper material lives in `references/`, one file per docs page:
 | **Framework adapters**: sectr.adapters — one adapter per supported framework, each on its own page. | references/sdk/adapters/index.md |
 | **LangGraph adapter**: sectr.adapters.langgraph — serve a LangGraph graph: its signatures, behavior, the graphs it supports, how it works, and its limits. | references/sdk/adapters/langgraph.md |
 | **OpenAI Agents SDK adapter**: sectr.adapters.openai_agents — serve an OpenAI Agents SDK agent: its signature, behavior, handoffs, subagents and limits. | references/sdk/adapters/openai-agents.md |
-| **Pydantic AI adapter**: sectr.adapters.pydantic_ai — serve a Pydantic AI agent: its signature, behavior, output types and limits. | references/sdk/adapters/pydantic-ai.md |
+| **Pydantic AI adapter**: sectr.adapters.pydantic_ai — serve a Pydantic AI agent: its signature, behavior and limits. | references/sdk/adapters/pydantic-ai.md |
 | **AgentApp**: The route registry and manifest source — the one sectr object your project exposes. | references/sdk/app.md |
 | **SessionContext**: The argument of a handler without a framework: the conversation, why the turn started, and running tools. | references/sdk/no-framework/context.md |
 | **No framework**: Write the agent loop yourself: a handler that reads the conversation, calls the model, and yields the events Sectr journals. | references/sdk/no-framework/index.md |
