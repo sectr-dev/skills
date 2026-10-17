@@ -28,7 +28,7 @@
       "post": {
         "operationId": "createSession",
         "summary": "Create a session and start its first turn",
-        "description": "Dual auth: invocation key (end-user path, origin=\"api\") or platform principal (dashboard playground, origin=\"playground\"). Starts the turn immediately with `input` as a user_message reason. A user token (`sks_`, SEC-67) creates a session OWNED by its bound end user; invocation-key sessions are ownerless (backend-only).",
+        "description": "Dual auth: invocation key (end-user path, origin=\"api\") or platform principal (dashboard playground, origin=\"playground\"). Starts the turn immediately with `input` as a user_message reason. A user token (`sks_`) creates a session OWNED by its bound end user; invocation-key sessions are ownerless (backend-only).",
         "security": [
           {
             "invocationKey": []
@@ -92,7 +92,7 @@
             }
           },
           "429": {
-            "description": "concurrency, capacity or rate limit (SEC-75; server policy — the dev gateway never returns it). Retry the same request after the `Retry-After` delay. On `/input` and `/approval` nothing was journaled. On `POST /sessions` normally nothing was either, but if a concurrent request took the last slot between admission and the first turn's claim, an idle session (only `SESSION_CREATED`) may be left behind; it is listed by `GET /sessions` and accepts `/input` later. `code` says which limit tripped (see the body schema).",
+            "description": "concurrency, capacity or rate limit (server policy — the dev gateway never returns it). Retry the same request after the `Retry-After` delay. On `/input` and `/approval` nothing was journaled. On `POST /sessions` normally nothing was either, but if a concurrent request took the last slot between admission and the first turn's claim, an idle session (only `SESSION_CREATED`) may be left behind; it is listed by `GET /sessions` and accepts `/input` later. `code` says which limit tripped (see the body schema).",
             "headers": {
               "Retry-After": {
                 "description": "seconds to wait before retrying",
@@ -176,7 +176,7 @@
       "post": {
         "operationId": "mintUserToken",
         "summary": "Mint a user-scope browser token (sks_)",
-        "description": "Server-to-server (SEC-67). The app's backend, authenticated with its invocation key, asserts the end-user identity its own auth established; the returned opaque `sks_` token is safe to hand to that user's browser. It can create sessions owned by the user, list only their sessions, and get/stream/input/decide approvals on them. Rate-limited per (key, external_user_id): 429 when exhausted. TTL 24h by default (server-configurable).",
+        "description": "Server-to-server. The app's backend, authenticated with its invocation key, asserts the end-user identity its own auth established; the returned opaque `sks_` token is safe to hand to that user's browser. It can create sessions owned by the user, list only their sessions, and get/stream/input/decide approvals on them. Rate-limited per (key, external_user_id): 429 when exhausted. TTL 24h by default (server-configurable).",
         "security": [
           {
             "invocationKey": []
@@ -592,7 +592,7 @@
             }
           },
           "429": {
-            "description": "concurrency, capacity or rate limit (SEC-75): `code` is `concurrency_limit`, `platform_capacity` or `rate_limited`. Nothing was journaled; retry the same run after `Retry-After`.",
+            "description": "concurrency, capacity or rate limit: `code` is `concurrency_limit`, `platform_capacity` or `rate_limited`. Nothing was journaled; retry the same run after `Retry-After`.",
             "headers": {
               "Retry-After": {
                 "description": "seconds to wait before retrying",
@@ -629,7 +629,7 @@
       "get": {
         "operationId": "connectAgUi",
         "summary": "Reconnect to a thread — re-stream its latest run (read-only)",
-        "description": "The server half of an AG-UI client's `connect()` (SEC-130; outside AG-UI 1.0, which has no reconnect). Streams the thread's latest run as a run would: `RUN_STARTED` (the original `runId`), a `MESSAGES_SNAPSHOT` of the history before it, then the run's events: replayed, then live until its terminal event. So a reloaded page gets a finished turn, a turn still streaming, or the same pending interrupt back. A thread that doesn't exist yet, or has no run, is an empty 200. Writes nothing and starts nothing; never 429. Same credentials, CORS and ownership rules as POST.",
+        "description": "The server half of an AG-UI client's `connect()` (outside AG-UI 1.0, which has no reconnect). Streams the thread's latest run as a run would: `RUN_STARTED` (the original `runId`), a `MESSAGES_SNAPSHOT` of the history before it, then the run's events: replayed, then live until its terminal event. So a reloaded page gets a finished turn, a turn still streaming, or the same pending interrupt back. A thread that doesn't exist yet, or has no run, is an empty 200. Writes nothing and starts nothing; never 429. Same credentials, CORS and ownership rules as POST.",
         "security": [
           {
             "userToken": []
@@ -788,7 +788,7 @@
         "operationId": "login",
         "summary": "Dashboard login (email + password)",
         "x-scalar-ignore": true,
-        "description": "SUPERSEDED by SEC-69 (Clerk sign-in → `POST /auth/clerk`); never implemented by the server. Kept only as the historical cookie-flow sketch.",
+        "description": "SUPERSEDED by the Clerk sign-in (`POST /auth/clerk`); never implemented by the server. Kept only as the historical cookie-flow sketch.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -828,7 +828,7 @@
         "operationId": "exchangeClerkSession",
         "summary": "Exchange a Clerk session JWT for a short-lived dashboard-session platform key",
         "x-scalar-ignore": true,
-        "description": "SEC-69: the dashboard's Clerk sign-in (GitHub / Google). The Clerk session JWT is verified networklessly (RS256 against the instance's public key; `iss`, `exp`/`nbf`, `azp`, `sub`, and the custom `email` claim). The account is resolved by the Clerk `sub` alone (no linking by email): a returning Clerk user gets their org, anyone else a brand-new org + user. Then an ordinary `platform` key with an `expires_at` (`SECTR_DASHBOARD_SESSION_TTL_SECS`, default 7 days, named `dashboard session (Clerk)`) is minted. The token goes in the BODY, never `Authorization`. The key is returned once and never logged.",
+        "description": "The dashboard's Clerk sign-in (GitHub / Google). The Clerk session JWT is verified networklessly (RS256 against the instance's public key; `iss`, `exp`/`nbf`, `azp`, `sub`, and the custom `email` claim). The account is resolved by the Clerk `sub` alone (no linking by email): a returning Clerk user gets their org, anyone else a brand-new org + user. Then an ordinary `platform` key with an `expires_at` (`SECTR_DASHBOARD_SESSION_TTL_SECS`, default 7 days, named `dashboard session (Clerk)`) is minted. The token goes in the BODY, never `Authorization`. The key is returned once and never logged.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -899,7 +899,7 @@
             }
           },
           "403": {
-            "description": "`{\"error\": <message>, \"code\": \"beta_full\"}` — the signup cap is reached and no org was created (SEC-75 owns the cap). Clients branch on `code`; `error` is human-readable.",
+            "description": "`{\"error\": <message>, \"code\": \"beta_full\"}` — the signup cap is reached and no org was created. Clients branch on `code`; `error` is human-readable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -937,7 +937,7 @@
         "operationId": "logout",
         "summary": "Sign out — revoke the presented dashboard-session key",
         "x-scalar-ignore": true,
-        "description": "SEC-69. Platform principal. Revokes the PRESENTED key only if it has an `expires_at` (a dashboard-session key); a pasted long-lived key is never revoked by signing out. Any live platform key gets a 204, whether or not it was revoked. A repeat call with a key that is already revoked is a 401, as on every authenticated route.",
+        "description": "Platform principal. Revokes the PRESENTED key only if it has an `expires_at` (a dashboard-session key); a pasted long-lived key is never revoked by signing out. Any live platform key gets a 204, whether or not it was revoked. A repeat call with a key that is already revoked is a 401, as on every authenticated route.",
         "responses": {
           "204": {
             "description": "signed out"
@@ -1742,7 +1742,7 @@
             "type": "string",
             "format": "date-time",
             "nullable": true,
-            "description": "hard expiry (SEC-69 dashboard-session keys, minted by POST /auth/clerk); expired keys authenticate as nonexistent. Null = never expires."
+            "description": "hard expiry (dashboard-session keys, minted by POST /auth/clerk); expired keys authenticate as nonexistent. Null = never expires."
           }
         }
       },
@@ -2211,7 +2211,7 @@
           },
           "SESSION_CREATED": {
             "type": "object",
-            "description": "Platform-emitted (seq 0 of a session). Optional `external_user_id` (SEC-67): the session's owner when created via a user-scope browser token — the app-defined end-user identity; absent for backend/platform-created sessions.",
+            "description": "Platform-emitted (seq 0 of a session). Optional `external_user_id`: the session's owner when created via a user-scope browser token — the app-defined end-user identity; absent for backend/platform-created sessions.",
             "required": [
               "app_id",
               "route"
@@ -2257,7 +2257,7 @@
           },
           "TOOL_RESULT": {
             "type": "object",
-            "description": "Runner-emitted. Journaled after every SUCCESSFUL tool execution — normal mid-turn calls and post-approval executions alike — and for a denied approval (the rejection text). A model conversation needs an output for every function_call, but the journal does not guarantee one: every prefix of a valid journal is itself valid (a crash can cut it anywhere, including between TOOL_CALL and TOOL_RESULT), and a tool that fails journals no TOOL_RESULT (failure semantics: SEC-123). The canonical fold supplies the missing output: a TOOL_CALL with no TOOL_RESULT that is followed by more conversation gets a synthesized, never-persisted tool output; a trailing one is a suspended approval. The approval decision itself is journaled by the platform as TOOL_APPROVAL_GRANTED/DENIED.",
+            "description": "Runner-emitted. Journaled after every SUCCESSFUL tool execution — normal mid-turn calls and post-approval executions alike — and for a denied approval (the rejection text). A model conversation needs an output for every function_call, but the journal does not guarantee one: every prefix of a valid journal is itself valid (a crash can cut it anywhere, including between TOOL_CALL and TOOL_RESULT), and a tool that fails journals no TOOL_RESULT. The canonical fold supplies the missing output: a TOOL_CALL with no TOOL_RESULT that is followed by more conversation gets a synthesized, never-persisted tool output; a trailing one is a suspended approval. The approval decision itself is journaled by the platform as TOOL_APPROVAL_GRANTED/DENIED.",
             "required": [
               "tool_call_id",
               "result"
@@ -2518,7 +2518,7 @@
           },
           "external_user_id": {
             "type": "string",
-            "description": "owner (SEC-67) — the end user whose browser token created the session; absent for backend/platform-created sessions"
+            "description": "owner — the end user whose browser token created the session; absent for backend/platform-created sessions"
           }
         }
       },
@@ -2600,7 +2600,7 @@
     },
     "responses": {
       "TooManyRequests": {
-        "description": "concurrency, capacity or rate limit (SEC-75; server policy — the dev gateway never returns it). Retry the same request after the `Retry-After` delay. On `/input` and `/approval` nothing was journaled. On `POST /sessions` normally nothing was either, but if a concurrent request took the last slot between admission and the first turn's claim, an idle session (only `SESSION_CREATED`) may be left behind; it is listed by `GET /sessions` and accepts `/input` later. `code` says which limit tripped (see the body schema).",
+        "description": "concurrency, capacity or rate limit (server policy — the dev gateway never returns it). Retry the same request after the `Retry-After` delay. On `/input` and `/approval` nothing was journaled. On `POST /sessions` normally nothing was either, but if a concurrent request took the last slot between admission and the first turn's claim, an idle session (only `SESSION_CREATED`) may be left behind; it is listed by `GET /sessions` and accepts `/input` later. `code` says which limit tripped (see the body schema).",
         "headers": {
           "Retry-After": {
             "description": "seconds to wait before retrying",
