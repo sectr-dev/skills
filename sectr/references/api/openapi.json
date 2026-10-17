@@ -1,0 +1,2633 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Sectr API",
+    "version": "0.1.0-draft",
+    "description": "Control plane + invocation API. The journal is the source of truth: client \"live\" views are SSE tails of the journal, never proxies of a running runner."
+  },
+  "servers": [
+    {
+      "url": "https://api.sectr.dev",
+      "description": "production"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "local dev (sectr-server)"
+    }
+  ],
+  "security": [
+    {
+      "platformSession": []
+    },
+    {
+      "platformApiKey": []
+    }
+  ],
+  "paths": {
+    "/sessions": {
+      "post": {
+        "operationId": "createSession",
+        "summary": "Create a session and start its first turn",
+        "description": "Dual auth: invocation key (end-user path, origin=\"api\") or platform principal (dashboard playground, origin=\"playground\"). Starts the turn immediately with `input` as a user_message reason. A user token (`sks_`, SEC-67) creates a session OWNED by its bound end user; invocation-key sessions are ownerless (backend-only).",
+        "security": [
+          {
+            "invocationKey": []
+          },
+          {
+            "userToken": []
+          },
+          {
+            "platformSession": []
+          },
+          {
+            "platformApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "app",
+                  "route",
+                  "input"
+                ],
+                "properties": {
+                  "app": {
+                    "type": "string",
+                    "description": "app id or name"
+                  },
+                  "route": {
+                    "type": "string",
+                    "description": "agent route, e.g. /customer-support"
+                  },
+                  "input": {
+                    "description": "Opaque JSON, journaled in INVOCATION_STARTED.reason.input. Not empty: a string of only whitespace, or an empty list, is a 400."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "created; turn started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "session_id"
+                  ],
+                  "properties": {
+                    "session_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "concurrency, capacity or rate limit (SEC-75; server policy — the dev gateway never returns it). Retry the same request after the `Retry-After` delay. On `/input` and `/approval` nothing was journaled. On `POST /sessions` normally nothing was either, but if a concurrent request took the last slot between admission and the first turn's claim, an idle session (only `SESSION_CREATED`) may be left behind; it is listed by `GET /sessions` and accepts `/input` later. `code` says which limit tripped (see the body schema).",
+            "headers": {
+              "Retry-After": {
+                "description": "seconds to wait before retrying",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorWithCode"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listSessions",
+        "summary": "List sessions (sessions tables, approvals inbox source)",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SessionStatus"
+            }
+          },
+          {
+            "name": "external_user_id",
+            "in": "query",
+            "description": "owner filter (backend/platform callers only; rejected for browser tokens, which are always scoped to their own user)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "created_before",
+            "in": "query",
+            "description": "RFC 3339; keyset pagination",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Session"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tokens": {
+      "post": {
+        "operationId": "mintUserToken",
+        "summary": "Mint a user-scope browser token (sks_)",
+        "description": "Server-to-server (SEC-67). The app's backend, authenticated with its invocation key, asserts the end-user identity its own auth established; the returned opaque `sks_` token is safe to hand to that user's browser. It can create sessions owned by the user, list only their sessions, and get/stream/input/decide approvals on them. Rate-limited per (key, external_user_id): 429 when exhausted. TTL 24h by default (server-configurable).",
+        "security": [
+          {
+            "invocationKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "app",
+                  "external_user_id"
+                ],
+                "properties": {
+                  "app": {
+                    "type": "string",
+                    "description": "the invocation key's own app (id or slug)"
+                  },
+                  "external_user_id": {
+                    "type": "string",
+                    "maxLength": 512,
+                    "description": "opaque, app-defined end-user id"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "minted; the token is shown once",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "token"
+                  ],
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "description": "sks_…"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid request or app does not match the key"
+          },
+          "401": {
+            "description": "not an invocation key"
+          },
+          "429": {
+            "description": "mint rate limit exhausted"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}": {
+      "get": {
+        "operationId": "getSession",
+        "summary": "Session metadata (inspector meta bar, tables)",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown session"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/events": {
+      "get": {
+        "operationId": "streamSessionEvents",
+        "summary": "Journal tail (SSE) — the ONLY live view; never proxied from a runner",
+        "description": "`text/event-stream`. Each frame's `data:` is one event envelope (event.schema.json); the SSE `id:` is the event's UUIDv7 `id`. Replays the full journal from seq 0, then holds the tail open. Resumption: standard `Last-Event-ID` header (or `last_event_id` query param for first-connect) → replay `WHERE seq > $1`.",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "last_event_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/input": {
+      "post": {
+        "operationId": "sendSessionInput",
+        "summary": "Send a user message (follow-up turn)",
+        "description": "Journaled as an INVOCATION_STARTED with reason user_message. 202 means the turn is SCHEDULED — turns run asynchronously; follow the SSE journal tail for the output. An input after an ERRORED turn is accepted (a fresh turn is the recovery path).",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "turn scheduled"
+          },
+          "400": {
+            "$ref": "#/components/responses/EmptyInput"
+          },
+          "404": {
+            "description": "unknown session"
+          },
+          "409": {
+            "description": "session not accepting input — mid-turn (a live lease holds the session), awaiting an approval decision (decide it first: a new message would strand the unanswered tool call in the conversation), or ended. NOT a 409 after an errored turn."
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/approval": {
+      "post": {
+        "operationId": "decideApproval",
+        "summary": "Decide a pending approval (banner, approvals inbox)",
+        "description": "Journaled as TOOL_APPROVAL_GRANTED/DENIED, then the platform resumes the turn with an approval_decision invocation.",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "decision journaled; resume scheduled"
+          },
+          "404": {
+            "description": "unknown session"
+          },
+          "409": {
+            "description": "no pending approval on this session"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/approvals": {
+      "get": {
+        "operationId": "listPendingApprovals",
+        "summary": "Pending approvals across all apps (admin approvals inbox)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PendingApproval"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ag-ui/{app}/{route}": {
+      "parameters": [
+        {
+          "name": "app",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "the app's id or slug"
+        },
+        {
+          "name": "route",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "the manifest route path without its leading slash (`/chat` → `chat`). Nested routes keep their slashes (`/ag-ui/my-app/support/chat`), which OpenAPI path templates cannot express. Must be a route of the app's active deployment."
+        }
+      ],
+      "post": {
+        "operationId": "runAgUi",
+        "summary": "Run the agent (AG-UI 1.0) — one turn, streamed",
+        "description": "One AG-UI run is one Sectr turn: `threadId` is the session id (a UUID) and the stream is that turn's events projected to AG-UI, ending in exactly one `RUN_FINISHED` or `RUN_ERROR`. A new `threadId` creates the session, owned by a user token's end user; it must start empty (earlier history → 400). On an existing thread the client's `messages` are ignored except the trailing user message: `RUN_STARTED` is followed by a `MESSAGES_SNAPSHOT` of the journal. A tool needing approval ends the run with `RUN_FINISHED {outcome: {type: interrupt}}`; the client answers with a run carrying `resume: [{interruptId, status, payload}]` (`payload: true` approves, `false` or `status: cancelled` denies). An invalid resume is a 200 stream of `RUN_STARTED` + `RUN_ERROR` (`code: invalid_run`), not an HTTP error. CORS: any origin, `GET`/`POST`, headers `authorization, content-type, accept`; preflights are answered before auth. Platform keys are refused (403).",
+        "security": [
+          {
+            "userToken": []
+          },
+          {
+            "invocationKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunAgentInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AG-UI event stream: one JSON event per `data:` frame, keep-alive comments every 15 s, no `id:` field (runs are not resumable; reconnect with GET instead).",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgUiEvent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "malformed `RunAgentInput`; `protocolVersion` not 1.x; `threadId` not a UUID; trailing message not `role: user`, or empty (only whitespace, or no content parts); history on a new thread",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "missing, unknown, revoked or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "a platform key, or a token for another app",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown app, route not in the active deployment (the message names the available routes), or a thread that is not the caller's (never 403: it reveals nothing about the owner)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the thread is mid-turn (reattach with GET instead), is awaiting an approval decision (answer it with `resume`), or belongs to another route of the app",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "concurrency, capacity or rate limit (SEC-75): `code` is `concurrency_limit`, `platform_capacity` or `rate_limited`. Nothing was journaled; retry the same run after `Retry-After`.",
+            "headers": {
+              "Retry-After": {
+                "description": "seconds to wait before retrying",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "connectAgUi",
+        "summary": "Reconnect to a thread — re-stream its latest run (read-only)",
+        "description": "The server half of an AG-UI client's `connect()` (SEC-130; outside AG-UI 1.0, which has no reconnect). Streams the thread's latest run as a run would: `RUN_STARTED` (the original `runId`), a `MESSAGES_SNAPSHOT` of the history before it, then the run's events: replayed, then live until its terminal event. So a reloaded page gets a finished turn, a turn still streaming, or the same pending interrupt back. A thread that doesn't exist yet, or has no run, is an empty 200. Writes nothing and starts nothing; never 429. Same credentials, CORS and ownership rules as POST.",
+        "security": [
+          {
+            "userToken": []
+          },
+          {
+            "invocationKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "threadId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "AG-UI event stream (as POST), or an empty body for a thread with no run",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgUiEvent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`threadId` missing or not a UUID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "missing, unknown, revoked or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "a platform key, or a token for another app",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown app or route, or a thread that is not the caller's",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the thread belongs to another route of the app",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "human-readable message"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "summary": "Dashboard login (email + password)",
+        "x-scalar-ignore": true,
+        "description": "SUPERSEDED by SEC-69 (Clerk sign-in → `POST /auth/clerk`); never implemented by the server. Kept only as the historical cookie-flow sketch.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "logged in; session cookie set"
+          },
+          "401": {
+            "description": "invalid credentials"
+          }
+        }
+      }
+    },
+    "/auth/clerk": {
+      "post": {
+        "operationId": "exchangeClerkSession",
+        "summary": "Exchange a Clerk session JWT for a short-lived dashboard-session platform key",
+        "x-scalar-ignore": true,
+        "description": "SEC-69: the dashboard's Clerk sign-in (GitHub / Google). The Clerk session JWT is verified networklessly (RS256 against the instance's public key; `iss`, `exp`/`nbf`, `azp`, `sub`, and the custom `email` claim). The account is resolved by the Clerk `sub` alone (no linking by email): a returning Clerk user gets their org, anyone else a brand-new org + user. Then an ordinary `platform` key with an `expires_at` (`SECTR_DASHBOARD_SESSION_TTL_SECS`, default 7 days, named `dashboard session (Clerk)`) is minted. The token goes in the BODY, never `Authorization`. The key is returned once and never logged.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "session_token"
+                ],
+                "properties": {
+                  "session_token": {
+                    "type": "string",
+                    "description": "the Clerk session JWT (`getToken()`)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "key",
+                    "org_slug",
+                    "created",
+                    "expires_at"
+                  ],
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "description": "skp_… full value; shown once"
+                    },
+                    "org_slug": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean",
+                      "description": "this sign-in created the org (route to the Getting-started checklist)"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "invalid Clerk session (any verification failure; no detail on the wire)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`{\"error\": <message>, \"code\": \"beta_full\"}` — the signup cap is reached and no org was created (SEC-75 owns the cap). Clients branch on `code`; `error` is human-readable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "beta_full"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "the Clerk session-token template lacks the `email` claim (operator misconfiguration)"
+          },
+          "503": {
+            "description": "Clerk is not configured, or a non-Postgres deployment"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Sign out — revoke the presented dashboard-session key",
+        "x-scalar-ignore": true,
+        "description": "SEC-69. Platform principal. Revokes the PRESENTED key only if it has an `expires_at` (a dashboard-session key); a pasted long-lived key is never revoked by signing out. Any live platform key gets a 204, whether or not it was revoked. A repeat call with a key that is already revoked is a 401, as on every authenticated route.",
+        "responses": {
+          "204": {
+            "description": "signed out"
+          },
+          "401": {
+            "description": "missing, unknown, revoked or expired key"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "summary": "Current user + organization (sidebar, account menus)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps": {
+      "get": {
+        "operationId": "listApps",
+        "summary": "List apps (console overview, sidebar, command palette)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AppSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/{appId}": {
+      "get": {
+        "operationId": "getApp",
+        "summary": "App detail (overview tab — agents, deployments, URL)",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown app"
+          }
+        }
+      }
+    },
+    "/apps/{appId}/deployments": {
+      "get": {
+        "operationId": "listAppDeployments",
+        "summary": "Deployment history (overview tab table)",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Deployment"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployments": {
+      "post": {
+        "operationId": "createDeployment",
+        "summary": "Ship a new deployment (CLI: `sectr deploy`)",
+        "description": "Multipart upload of the packaged agent + manifest. First deploy for an unknown app name creates the app (CLI-first creation). Auth: platform API key.",
+        "security": [
+          {
+            "platformApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "tarball",
+                  "manifest"
+                ],
+                "properties": {
+                  "tarball": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "manifest": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted — the build runs off-request. The response body is the deployment row in `building` state; poll `GET /apps/{appId}/deployments` until `status` reaches `active` or `failed` (a `failed` row carries its `error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deployment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failure: unreadable multipart (the `tarball` or `manifest` field could not be read), or the body is missing a required field."
+          },
+          "422": {
+            "description": "Validation/rejection failure: invalid `sectr.toml` (not TOML, missing or empty `agent.entry`), the app has a secret named `SECTR_APPROVAL_POLICY` (Sectr sets that variable from `[deploy] approval_tools`; remove the secret), or the deploy was rejected server-side (registry/artifact-store error — a version collision under concurrent deploys of the same app surfaces here)."
+          }
+        }
+      }
+    },
+    "/deployments/{deploymentId}/activate": {
+      "post": {
+        "operationId": "activateDeployment",
+        "summary": "Make a deployment current (dashboard rollback / promote)",
+        "description": "New sessions pin to the newly-active deployment; existing sessions keep their pinned deployment.",
+        "parameters": [
+          {
+            "name": "deploymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "activation accepted"
+          },
+          "404": {
+            "description": "unknown deployment"
+          },
+          "409": {
+            "description": "Deployment not in a ready state — only `active` or `retired` rows (a resolved build) can be activated; `building` and `failed` targets are rejected."
+          }
+        }
+      }
+    },
+    "/secrets": {
+      "get": {
+        "operationId": "listSecrets",
+        "summary": "List secret NAMES only (settings; write-only by design)",
+        "parameters": [
+          {
+            "name": "app",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "the app's slug (secrets are scoped per app)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SecretMeta"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/secrets/{key}": {
+      "put": {
+        "operationId": "putSecret",
+        "summary": "Create or replace a secret (value never readable back)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "env-safe name, [A-Za-z_][A-Za-z0-9_]*"
+          },
+          {
+            "name": "app",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "the app's slug (secrets are scoped per app)"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "value"
+                ],
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "stored"
+          },
+          "422": {
+            "description": "The key isn't env-safe, or is `SECTR_APPROVAL_POLICY`: Sectr sets that variable on every runner from `[deploy] approval_tools` in sectr.toml, so it can't be a secret. Body: `{error}`."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteSecret",
+        "summary": "Delete a secret",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "the app's slug (secrets are scoped per app)"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "deleted"
+          }
+        }
+      }
+    },
+    "/api-keys": {
+      "get": {
+        "operationId": "listApiKeys",
+        "summary": "List API keys (settings; metadata only)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeyMeta"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createApiKey",
+        "summary": "Create an API key — full value returned exactly once",
+        "description": "Mints either key class. Platform keys are org-scoped; invocation keys must carry the `app_id` they scope to (the DDL CHECK enforces the class/app_id consistency too). The full value is returned once and never stored — only its SHA-256 hash.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "kind"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$ref": "#/components/schemas/ApiKeyKind"
+                  },
+                  "app_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "invocation keys only"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiKeyMeta"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "key"
+                      ],
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "description": "full secret value; shown once"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "class/app_id mismatch or unknown app"
+          }
+        }
+      }
+    },
+    "/api-keys/{keyId}": {
+      "delete": {
+        "operationId": "revokeApiKey",
+        "summary": "Revoke an API key",
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "revoked"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "platformSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sectr_session"
+      },
+      "platformApiKey": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "invocationKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "per-app invocation key minted in the dashboard settings — the trusted-backend / minting credential; never ship it to a browser in a multi-user app"
+      },
+      "userToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "short-TTL end-user browser token (`sks_`) minted via POST /tokens. Also accepted as `?token=` on the SSE endpoint only (EventSource cannot set headers) — access logs must redact it."
+      }
+    },
+    "schemas": {
+      "RunAgentInput": {
+        "type": "object",
+        "description": "AG-UI 1.0 `RunAgentInput` (https://docs.ag-ui.com/sdk/js/core/types#runagentinput). Sectr reads the fields below; `state` and `parentRunId` are accepted and ignored, and `tools` is accepted but unused (frontend tools are not supported yet).",
+        "required": [
+          "threadId",
+          "runId",
+          "messages"
+        ],
+        "properties": {
+          "threadId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "the Sectr session id; a new one creates the session"
+          },
+          "runId": {
+            "type": "string",
+            "description": "the client's run id: echoed in RUN_STARTED and journaled (the invocation id stays server-minted)"
+          },
+          "protocolVersion": {
+            "type": "string",
+            "description": "optional; must be 1.x (minor versions are additive)"
+          },
+          "messages": {
+            "type": "array",
+            "description": "AG-UI messages. The trailing one must be `role: user` (its `content` becomes the turn's input), except on a resume run. On a new thread nothing but `system` / `developer` messages may precede it; on an existing thread earlier messages are ignored (the journal is the history).",
+            "items": {
+              "type": "object"
+            }
+          },
+          "resume": {
+            "type": "array",
+            "maxItems": 1,
+            "description": "the answer to the pending approval interrupt, which makes this a resume run",
+            "items": {
+              "type": "object",
+              "required": [
+                "interruptId",
+                "status"
+              ],
+              "properties": {
+                "interruptId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "resolved",
+                    "cancelled"
+                  ]
+                },
+                "payload": {
+                  "type": "boolean",
+                  "description": "with `resolved`: true approves, false denies"
+                }
+              }
+            }
+          },
+          "forwardedProps": {
+            "type": "object",
+            "description": "journaled with the run; not yet exposed to agent code"
+          },
+          "context": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "journaled with the run; not yet exposed to agent code"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "state": {},
+          "parentRunId": {
+            "type": "string"
+          }
+        }
+      },
+      "AgUiEvent": {
+        "type": "object",
+        "description": "One AG-UI 1.0 event (https://docs.ag-ui.com/concepts/events). Every event carries `timestamp` (ms) and `metadata: {seq}` (the journal sequence number). Not emitted: `STATE_*`, `*_CHUNK`, `ACTIVITY_*`, `RUN_FINISHED.usage`.",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "RUN_STARTED",
+              "MESSAGES_SNAPSHOT",
+              "TEXT_MESSAGE_START",
+              "TEXT_MESSAGE_CONTENT",
+              "TEXT_MESSAGE_END",
+              "REASONING_START",
+              "REASONING_MESSAGE_START",
+              "REASONING_MESSAGE_CONTENT",
+              "REASONING_MESSAGE_END",
+              "REASONING_END",
+              "TOOL_CALL_START",
+              "TOOL_CALL_ARGS",
+              "TOOL_CALL_END",
+              "TOOL_CALL_RESULT",
+              "RUN_FINISHED",
+              "RUN_ERROR"
+            ]
+          },
+          "timestamp": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "seq": {
+                "type": "integer"
+              }
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "ApiKeyKind": {
+        "type": "string",
+        "enum": [
+          "platform",
+          "invocation",
+          "user"
+        ]
+      },
+      "Me": {
+        "type": "object",
+        "description": "MVP: no user records exist (paste-a-platform-key login, decided 2026-09-12), so `user` is absent; `org` is the authenticated principal's org.",
+        "required": [
+          "org"
+        ],
+        "properties": {
+          "user": {
+            "type": "object",
+            "required": [
+              "id",
+              "email",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "org": {
+            "type": "object",
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "AppSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "framework",
+          "description",
+          "url",
+          "routes",
+          "sessions_count",
+          "latest_deployment"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "framework": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "openai-agents",
+              "langgraph",
+              "pydantic-ai",
+              "claude-code",
+              null
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "public app host (null in the MVP)"
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "description"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "sessions_count": {
+            "type": "integer"
+          },
+          "latest_deployment": {
+            "$ref": "#/components/schemas/Deployment"
+          }
+        }
+      },
+      "AppDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AppSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "deployments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Deployment"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DeploymentStatus": {
+        "type": "string",
+        "enum": [
+          "building",
+          "active",
+          "failed",
+          "retired"
+        ]
+      },
+      "Deployment": {
+        "type": "object",
+        "required": [
+          "id",
+          "app_id",
+          "version",
+          "status",
+          "created_at",
+          "active"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "commit_message": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "current deployment for new sessions"
+          }
+        }
+      },
+      "SecretMeta": {
+        "type": "object",
+        "required": [
+          "name",
+          "created_at"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiKeyMeta": {
+        "type": "object",
+        "description": "Metadata only — the store keeps SHA-256 hashes, so no display prefix exists; `name` identifies keys. `revoked_at` non-null keys authenticate as nonexistent.",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ApiKeyKind"
+          },
+          "app_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "invocation keys only"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_used_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "hard expiry (SEC-69 dashboard-session keys, minted by POST /auth/clerk); expired keys authenticate as nonexistent. Null = never expires."
+          }
+        }
+      },
+      "EventEnvelope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Sectr journal event envelope",
+        "description": "Canonical event model for Sectr. Every journal row and every client SSE frame is one envelope. The envelope ties a closed `type` enum to a per-type payload schema via the `typedEvent` oneOf.\n\nForward compatibility: `additionalProperties` is deliberately NOT false anywhere in this schema — payload/envelope objects may carry unknown fields, and readers must preserve them, so events written by newer writers remain valid for older readers.\n\n`seq` is a per-session monotonic integer assigned by the journal writer (the server's ingest path), gap-free within a turn, starting at 0. It is never supplied by user code. `id` is a UUIDv7 (time-ordered) minted by the platform's event producer (the engine — never user code) and deduped by the journal writer, enabling exactly-once reconnect replay; the SSE frame's `id:` field carries it, enabling `Last-Event-ID` resumption.\n\nRunner-emitted event types may only appear on the SSE response stream of the invoke contract (see `invocation.schema.json` $defs/runnerEvent); platform-emitted types are written by the server/sidecar only.\n\nTurn semantics: a turn starts with a user_message invocation and ends when NO_MORE_ACTIONS is journaled within it (also synthesized by the sidecar after SESSION_ERROR). An approval pause SUSPENDS the turn — TOOL_APPROVAL_REQUIRED is then the last runner event, and no NO_MORE_ACTIONS is emitted until the decision's resume invocation completes.",
+        "type": "object",
+        "required": [
+          "id",
+          "session_id",
+          "deployment_id",
+          "seq",
+          "type",
+          "payload",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/EventEnvelope/$defs/uuidv7"
+          },
+          "session_id": {
+            "$ref": "#/components/schemas/EventEnvelope/$defs/uuid"
+          },
+          "deployment_id": {
+            "$ref": "#/components/schemas/EventEnvelope/$defs/uuid"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "type": {
+            "$ref": "#/components/schemas/EventEnvelope/$defs/eventType"
+          },
+          "payload": true,
+          "created_at": {
+            "$ref": "#/components/schemas/EventEnvelope/$defs/timestamp"
+          }
+        },
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EventEnvelope/$defs/typedEvent"
+          }
+        ],
+        "$defs": {
+          "uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "description": "Canonical lowercase UUID (any version)."
+          },
+          "uuidv7": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            "description": "Lowercase UUIDv7 — version nibble 7, RFC 9562 variant."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "RFC 3339 timestamp, always UTC (Z)."
+          },
+          "eventType": {
+            "enum": [
+              "MESSAGE_START",
+              "MESSAGE_DELTA",
+              "MESSAGE_END",
+              "TOOL_CALL",
+              "TOOL_APPROVAL_REQUIRED",
+              "ERROR",
+              "NO_MORE_ACTIONS",
+              "SESSION_CREATED",
+              "INVOCATION_STARTED",
+              "TOOL_RESULT",
+              "TOOL_APPROVAL_GRANTED",
+              "TOOL_APPROVAL_DENIED",
+              "SESSION_ERROR",
+              "TRANSCRIPT_COMPACTED"
+            ]
+          },
+          "runnerEventType": {
+            "enum": [
+              "MESSAGE_START",
+              "MESSAGE_DELTA",
+              "MESSAGE_END",
+              "TOOL_CALL",
+              "TOOL_RESULT",
+              "TOOL_APPROVAL_REQUIRED",
+              "ERROR",
+              "NO_MORE_ACTIONS",
+              "TRANSCRIPT_COMPACTED"
+            ],
+            "description": "The subset of event types a runner (user process) may emit over the invoke response stream. Everything else is platform-emitted. The turn ends when NO_MORE_ACTIONS is emitted; an approval pause (TOOL_APPROVAL_REQUIRED last) does NOT end the turn. TRANSCRIPT_COMPACTED is emitted by the SDK/adapter when the agent framework compacts context."
+          },
+          "typedEvent": {
+            "description": "Discriminated union: each branch pins `type` to a const and binds the payload to that type's schema.",
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "MESSAGE_START"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/MESSAGE_START"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "MESSAGE_DELTA"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/MESSAGE_DELTA"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "MESSAGE_END"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/MESSAGE_END"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "TOOL_CALL"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/TOOL_CALL"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "TOOL_APPROVAL_REQUIRED"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/TOOL_APPROVAL_REQUIRED"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "ERROR"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/ERROR"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "NO_MORE_ACTIONS"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/NO_MORE_ACTIONS"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "SESSION_CREATED"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/SESSION_CREATED"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "INVOCATION_STARTED"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/INVOCATION_STARTED"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "TOOL_RESULT"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/TOOL_RESULT"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "TOOL_APPROVAL_GRANTED"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/TOOL_APPROVAL_GRANTED"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "TOOL_APPROVAL_DENIED"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/TOOL_APPROVAL_DENIED"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "SESSION_ERROR"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/SESSION_ERROR"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "TRANSCRIPT_COMPACTED"
+                  },
+                  "payload": {
+                    "$ref": "#/components/schemas/EventEnvelope/$defs/TRANSCRIPT_COMPACTED"
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              }
+            ]
+          },
+          "MESSAGE_START": {
+            "type": "object",
+            "description": "Runner-emitted. Start of an assistant message.",
+            "required": [
+              "role",
+              "message_id"
+            ],
+            "properties": {
+              "role": {
+                "type": "string",
+                "minLength": 1,
+                "description": "e.g. \"assistant\"; opaque to the platform."
+              },
+              "message_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Runner-scoped message identifier; correlates START/DELTA/END."
+              }
+            }
+          },
+          "MESSAGE_DELTA": {
+            "type": "object",
+            "description": "Runner-emitted. Content delta for a message. Deltas are INTERPRETABLE, not opaque: the platform (e.g. a future AG-UI-compatible endpoint) must be able to reconstruct both the exact transcript and its streaming semantics from the journal alone. Tool-argument streaming is deliberately NOT a delta kind — TOOL_CALL journals complete arguments, which a resumed runner executes from journal data alone.",
+            "required": [
+              "message_id",
+              "delta"
+            ],
+            "properties": {
+              "message_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "delta": {
+                "description": "Interpretable content delta: {type, text} with a CLOSED kind vocabulary — `text` (maps to AG-UI TEXT_MESSAGE_CONTENT) and `reasoning` (maps to THINKING_CONTENT). One wire shape only; unknown kinds are invalid: framework chunk types outside the vocabulary must be normalized by the SDK adapter before journaling (e.g. Anthropic input_json_delta accumulates into TOOL_CALL.arguments).",
+                "type": "object",
+                "required": [
+                  "type",
+                  "text"
+                ],
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "text",
+                      "reasoning"
+                    ]
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "MESSAGE_END": {
+            "type": "object",
+            "description": "Runner-emitted. End of an assistant message.",
+            "required": [
+              "message_id"
+            ],
+            "properties": {
+              "message_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "finish_reason": {
+                "type": "string",
+                "description": "Opaque to the platform, e.g. \"stop\", \"length\", \"tool_use\"."
+              },
+              "framework_state": {
+                "type": "object",
+                "description": "What the adapter that wrote it needs to rehydrate and replay THIS model response as its agent framework stored it, beyond the message's text and tool calls (e.g. signed reasoning); never state of other responses or of the run as a whole. Its `data` is opaque to the platform, which stores and serves it but never interprets it; only the adapter named by `adapter` reads it back. At most 256 KiB serialized: the platform drops a larger one.",
+                "required": [
+                  "adapter",
+                  "v",
+                  "data"
+                ],
+                "properties": {
+                  "adapter": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The adapter that wrote it, e.g. \"langgraph\"."
+                  },
+                  "v": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "The adapter's format version for `data`."
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "The adapter's own data, in its format `v`. Opaque to the platform. The journal keeps a string value exactly, byte for byte, but an object or a number only by value: an object's keys may come back in another order, and a number in another notation. So a value the adapter needs back exactly (e.g. text a provider gets verbatim) is stored as a string; structure it only reads may be stored as JSON."
+                  }
+                }
+              }
+            }
+          },
+          "TOOL_CALL": {
+            "type": "object",
+            "description": "Runner-emitted. Journal record of a tool call initiated inside the runner — the platform NEVER executes tools. Arguments are opaque JSON (conventionally an object) journaled verbatim; name + arguments must be sufficient for a resumed runner to execute an approved call from journal data alone.",
+            "required": [
+              "tool_call_id",
+              "name",
+              "arguments"
+            ],
+            "properties": {
+              "tool_call_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "arguments": true
+            }
+          },
+          "TOOL_APPROVAL_REQUIRED": {
+            "type": "object",
+            "description": "Runner-emitted. Requests human approval for a tool call. MUST be the final runner event of a turn; the turn ends with TURN_END{stop_reason: \"awaiting_approval\"}.",
+            "required": [
+              "tool_call_id",
+              "name",
+              "arguments"
+            ],
+            "properties": {
+              "tool_call_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "arguments": true,
+              "reason": {
+                "type": "string",
+                "description": "Human-readable explanation shown in the approval inbox."
+              }
+            }
+          },
+          "ERROR": {
+            "type": "object",
+            "description": "Runner-emitted. Runner-level error; ends the turn (followed by TURN_END{stop_reason: \"error\"}).",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string",
+                "minLength": 1
+              },
+              "code": {
+                "type": "string"
+              },
+              "transient": {
+                "type": "boolean",
+                "description": "True if a retry of the same invocation may succeed."
+              }
+            }
+          },
+          "SESSION_CREATED": {
+            "type": "object",
+            "description": "Platform-emitted (seq 0 of a session). Optional `external_user_id` (SEC-67): the session's owner when created via a user-scope browser token — the app-defined end-user identity; absent for backend/platform-created sessions.",
+            "required": [
+              "app_id",
+              "route"
+            ],
+            "properties": {
+              "app_id": {
+                "$ref": "#/components/schemas/EventEnvelope/$defs/uuid"
+              },
+              "route": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "external_user_id": {
+                "type": "string",
+                "description": "owner identity: the (app-scoped) end-user the session belongs to; absent when backend/platform-created"
+              }
+            }
+          },
+          "INVOCATION_STARTED": {
+            "type": "object",
+            "description": "Platform-emitted. One per invocation, appended BEFORE the sidecar fetches the transcript — so the runner's transcript already includes its own INVOCATION_STARTED, and the canonical messages view already contains the current user message. `reason` says why this invocation exists.",
+            "required": [
+              "invocation_id",
+              "route",
+              "deployment_id",
+              "reason"
+            ],
+            "properties": {
+              "invocation_id": {
+                "$ref": "#/components/schemas/EventEnvelope/$defs/uuid"
+              },
+              "route": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "deployment_id": {
+                "$ref": "#/components/schemas/EventEnvelope/$defs/uuid"
+              },
+              "reason": {
+                "$ref": "#/components/schemas/EventEnvelope/$defs/invocationReason"
+              }
+            }
+          },
+          "TOOL_RESULT": {
+            "type": "object",
+            "description": "Runner-emitted. Journaled after every SUCCESSFUL tool execution — normal mid-turn calls and post-approval executions alike — and for a denied approval (the rejection text). A model conversation needs an output for every function_call, but the journal does not guarantee one: every prefix of a valid journal is itself valid (a crash can cut it anywhere, including between TOOL_CALL and TOOL_RESULT), and a tool that fails journals no TOOL_RESULT (failure semantics: SEC-123). The canonical fold supplies the missing output: a TOOL_CALL with no TOOL_RESULT that is followed by more conversation gets a synthesized, never-persisted tool output; a trailing one is a suspended approval. The approval decision itself is journaled by the platform as TOOL_APPROVAL_GRANTED/DENIED.",
+            "required": [
+              "tool_call_id",
+              "result"
+            ],
+            "properties": {
+              "tool_call_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "result": true
+            }
+          },
+          "TOOL_APPROVAL_GRANTED": {
+            "type": "object",
+            "description": "Platform-emitted. The approval decision itself, journaled.",
+            "required": [
+              "tool_call_id"
+            ],
+            "properties": {
+              "tool_call_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "approver": {
+                "type": "string"
+              }
+            }
+          },
+          "TOOL_APPROVAL_DENIED": {
+            "type": "object",
+            "description": "Platform-emitted. The approval decision itself, journaled.",
+            "required": [
+              "tool_call_id"
+            ],
+            "properties": {
+              "tool_call_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "approver": {
+                "type": "string"
+              }
+            }
+          },
+          "SESSION_ERROR": {
+            "type": "object",
+            "description": "Platform-emitted. Platform-level failure (runner crash, timeout, lease expiry).",
+            "required": [
+              "message"
+            ],
+            "properties": {
+              "message": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "envelope": {
+            "description": "Alias reference to this schema's root envelope, for cross-file $refs (e.g. invocation.schema.json transcripts).",
+            "$ref": "#/components/schemas/EventEnvelope"
+          },
+          "runnerEvent": {
+            "description": "One frame of the runner's SSE response stream in the invoke contract: `{type, payload}` only — `id`, `seq`, `session_id`, `deployment_id` and `created_at` are assigned by the journal writer (the server's ingest path) when the event is journaled. Restricted to runner-emitted types.",
+            "type": "object",
+            "required": [
+              "type",
+              "payload"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/components/schemas/EventEnvelope/$defs/runnerEventType"
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventEnvelope/$defs/typedEvent"
+              }
+            ]
+          },
+          "transcript": {
+            "description": "Full session history as journal envelopes, rehydrated by the platform and passed to the runner in the invoke request.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventEnvelope/$defs/envelope"
+            }
+          },
+          "NO_MORE_ACTIONS": {
+            "type": "object",
+            "description": "Runner-emitted (synthesized by the SDK driver on generator exhaustion or after an unhandled error's ERROR event; synthesized by the sidecar after SESSION_ERROR on a runner crash). THE turn-ending sentinel: 'the agent has no pending actions — the ball is in the user's court.' Deliberately NOT emitted on an approval pause: a gated tool is a pending action, so the turn is suspended, not over. Raw (no-SDK) runners MUST end their stream with this event when the turn is complete.",
+            "required": [],
+            "properties": {}
+          },
+          "invocationReason": {
+            "description": "Why an invocation exists. `tool_result` kind is specified for post-MVP externally-executed tools (the platform never executes tools in MVP).",
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "input"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "user_message"
+                  },
+                  "input": {
+                    "description": "The user's message — opaque JSON, exactly as submitted. Starts a turn (first or follow-up)."
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "decision"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "approval_decision"
+                  },
+                  "decision": {
+                    "type": "object",
+                    "required": [
+                      "approved"
+                    ],
+                    "properties": {
+                      "approved": {
+                        "type": "boolean"
+                      },
+                      "approver": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "tool_call_id",
+                  "result"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "tool_result"
+                  },
+                  "tool_call_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "result": {
+                    "description": "Output of an externally-executed tool (post-MVP)."
+                  }
+                }
+              }
+            ]
+          },
+          "TRANSCRIPT_COMPACTED": {
+            "type": "object",
+            "description": "Runner-emitted when the agent framework compacts context (framework's algorithm, framework's model access — the SDK/adapter captures the result and journals it mid-stream). Payload is the FULL post-compaction context in canonical message form: context assembly = these messages + the canonical view of everything journaled after this event (positional fold; `replaces_up_to_seq` is metadata — the journal head at compaction time). Constraint: the snapshot must not drop an unanswered tool call (an open function_call without its output is an invalid context on replay).",
+            "required": [
+              "replaces_up_to_seq",
+              "messages"
+            ],
+            "properties": {
+              "replaces_up_to_seq": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "messages": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                },
+                "description": "OpenAI-style message dicts (the canonical view) — the entire new context, framework compaction output normalized."
+              }
+            }
+          }
+        }
+      },
+      "ErrorWithCode": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "human-readable message"
+          },
+          "code": {
+            "type": "string",
+            "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
+          }
+        }
+      },
+      "SessionStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "awaiting_approval",
+          "ended",
+          "error"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "required": [
+          "id",
+          "app_id",
+          "route",
+          "origin",
+          "deployment_id",
+          "status",
+          "created_at",
+          "last_event_at",
+          "event_count"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "app_id": {
+            "type": "string",
+            "description": "dashboard joins app_name client-side"
+          },
+          "route": {
+            "type": "string",
+            "description": "the agent this session talked to"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "api",
+              "playground"
+            ],
+            "description": "server-derived from the creating principal"
+          },
+          "deployment_id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SessionStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_event_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "event_count": {
+            "type": "integer"
+          },
+          "external_user_id": {
+            "type": "string",
+            "description": "owner (SEC-67) — the end user whose browser token created the session; absent for backend/platform-created sessions"
+          }
+        }
+      },
+      "NewSessionRequest": {
+        "type": "object",
+        "required": [
+          "app",
+          "route",
+          "input"
+        ],
+        "properties": {
+          "app": {
+            "type": "string",
+            "description": "app id or name"
+          },
+          "route": {
+            "type": "string",
+            "description": "agent route, e.g. /customer-support"
+          },
+          "input": {
+            "description": "Opaque JSON, journaled in INVOCATION_STARTED.reason.input. Not empty: a string of only whitespace, or an empty list, is a 400."
+          }
+        }
+      },
+      "SessionCreated": {
+        "type": "object",
+        "required": [
+          "session_id"
+        ],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SessionInput": {
+        "type": "object",
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "description": "Opaque JSON, journaled in INVOCATION_STARTED.reason.input. Not empty: a string of only whitespace, or an empty list, is a 400."
+          }
+        }
+      },
+      "ApprovalDecision": {
+        "type": "object",
+        "required": [
+          "approved"
+        ],
+        "properties": {
+          "approved": {
+            "type": "boolean"
+          },
+          "approver": {
+            "type": "string",
+            "description": "defaults to the authenticated principal"
+          }
+        }
+      },
+      "PendingApproval": {
+        "type": "object",
+        "required": [
+          "session",
+          "event"
+        ],
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/Session"
+          },
+          "event": {
+            "$ref": "#/components/schemas/EventEnvelope",
+            "description": "the TOOL_APPROVAL_REQUIRED event envelope"
+          }
+        }
+      }
+    },
+    "responses": {
+      "TooManyRequests": {
+        "description": "concurrency, capacity or rate limit (SEC-75; server policy — the dev gateway never returns it). Retry the same request after the `Retry-After` delay. On `/input` and `/approval` nothing was journaled. On `POST /sessions` normally nothing was either, but if a concurrent request took the last slot between admission and the first turn's claim, an idle session (only `SESSION_CREATED`) may be left behind; it is listed by `GET /sessions` and accepts `/input` later. `code` says which limit tripped (see the body schema).",
+        "headers": {
+          "Retry-After": {
+            "description": "seconds to wait before retrying",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorWithCode"
+            }
+          }
+        }
+      },
+      "EmptyInput": {
+        "description": "`input` is empty: a string of only whitespace (or no characters), or an empty list. Nothing is journaled; some framework and provider pairs can't send an empty user message.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorWithCode"
+            }
+          }
+        }
+      }
+    }
+  }
+}

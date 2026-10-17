@@ -1,7 +1,7 @@
 # API overview
 
 Any client - a web frontend, a mobile app, a script - drives a deployed
-agent over the Sectr HTTP API. See the [full reference](https://docs.sectr.dev/reference/api-spec/) for complete details.
+agent over the Sectr HTTP API. See the [full reference](openapi.json) for complete details.
 
 ## The data plane APIs
 
