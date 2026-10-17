@@ -389,7 +389,6 @@ Deeper material lives in `references/`, one file per docs page:
 | **Using the OpenAI Agents SDK**: Serve an OpenAI Agents SDK agent on Sectr — streaming, native tool approvals and durable sessions, with the agent unchanged. | references/getting-started/openai-agents.md |
 | **Using Pydantic AI**: Serve a Pydantic AI agent on Sectr — streaming, native tool approvals and durable sessions, resumed from the journal alone. | references/getting-started/pydantic-ai.md |
 | **Compaction**: Keep long-running conversations inside the context window — TRANSCRIPT_COMPACTED and the positional fold. | references/guides/compaction.md |
-| **Choosing a framework**: Which agent frameworks Sectr supports, how each is served, and which to pick. | references/guides/framework-adapters.md |
 | **Local dev**: The sectr dev loop — local engine, gateway, dashboard, send/tail. | references/guides/local-dev.md |
 | **Secrets**: Write-only secrets for deployed agents — set, list, remove, and how they reach your code. | references/guides/secrets.md |
 | **Subagents**: A subagent is another agent your agent runs from a tool — what works on Sectr, and the one thing that doesn't yet. | references/guides/subagents.md |

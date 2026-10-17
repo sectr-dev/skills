@@ -1,8 +1,8 @@
 # Framework adapters
 
-Each adapter's signature, behavior and limits. For what an adapter does,
-which frameworks are supported and how to install each, see
-[choosing a framework](../guides/framework-adapters.md).
+Each adapter's signature, behavior and limits. For which frameworks are
+supported, how to install each, and which to pick, see
+[choosing a framework](https://docs.sectr.dev/guides/framework-adapters/).
 
 ## OpenAI Agents SDK
 
