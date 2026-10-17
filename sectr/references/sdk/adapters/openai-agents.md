@@ -16,11 +16,10 @@ app.add_route("/chat", openai_agents(agent))
 - Signature: `openai_agents(agent, *, model=None, run_config=None, context=None)`
   - `context` is a **factory** called once per invocation with the turn's
     `SessionContext` (its `ctx.session_id` identifies the session), sync or
-    `async`. Its value
-    is the SDK's run context (`Runner.run_streamed(context=...)`): tools,
-    hooks, guardrails and dynamic instructions read it as
-    `RunContextWrapper.context`, and MCP tool filters see it too. A static
-    value is `context=lambda ctx: value`.
+    `async`. Its value is the SDK's run context
+    (`Runner.run_streamed(context=...)`): tools, hooks, guardrails and
+    dynamic instructions read it as `RunContextWrapper.context`, and MCP tool
+    filters see it too. A static value is `context=lambda ctx: value`.
 - An approved tool runs as the SDK runs any tool, with its guardrails, your
   hooks, tracing, the run context and your `run_config`.
 - Structured output isn't supported yet: an `output_type` on the agent, or on
@@ -48,10 +47,17 @@ app.add_route("/chat", openai_agents(agent))
 
 ## Subagents
 
-The rules are the same in every framework (see [subagents](../../guides/subagents.md)):
-a subagent is an opaque tool, which can be gated as a whole, but a gated tool
-inside one isn't supported. An `escalate` tool that runs a `specialist` agent,
-gated as a whole:
+A subagent is another agent your agent runs from a tool. On Sectr it's an
+ordinary tool, and an opaque one: the journal, and every client streaming the
+session, see the tool call and its result, but not the subagent's own messages
+and tool calls, so later turns don't see those either.
+
+To require approval for what a subagent does, gate its tool: approving it runs
+the whole subagent, and denying it runs none of it. A gated tool *inside* a
+subagent isn't supported yet, because Sectr can't pause a turn partway through
+one (the cases are below).
+
+An `escalate` tool that runs a `specialist` agent, gated as a whole:
 
 ```python
 specialist = Agent(name="specialist", instructions="...", tools=[track_parcel])
@@ -67,12 +73,13 @@ agent = Agent(
 )
 ```
 
-An `as_tool()` subagent is opaque. An agent you hand off to (`handoffs=[...]`)
-isn't: its messages and tool calls are journaled like your agent's. Neither may
-have a gated tool, at any depth. One gated in code makes `openai_agents(agent)`
-raise a `ValueError` naming the tool and `subagent_gated_tool`, so `sectr dev`
-and `sectr deploy` report it. One that the deployment's `approval_tools` names
-ends each turn with an `ERROR` with that code, before the model runs.
+An agent you hand off to (`handoffs=[...]`) isn't opaque, unlike an
+`as_tool()` subagent: its messages and tool calls are journaled like your
+agent's. But neither may have a gated tool, at any depth. One gated in code
+makes `openai_agents(agent)` raise a `ValueError` naming the tool and
+`subagent_gated_tool`, so `sectr dev` and `sectr deploy` report it. One that
+the deployment's `approval_tools` names ends each turn with an `ERROR` with
+that code, before the model runs.
 
 **Limits.** Where your own code starts the subagent or handles
 what it returns, the adapter can't see its run:

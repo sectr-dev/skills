@@ -292,7 +292,8 @@ written:
 
 A tool inside a subagent (another agent your agent runs from a tool) can't
 be gated: gate the subagent tool itself, and approving it runs the whole
-subagent. See [subagents](references/guides/subagents.md).
+subagent. Each [adapter's page](references/sdk/adapters/index.md) shows how, under
+"Subagents".
 
 #### OpenAI Agents SDK
 
@@ -395,7 +396,6 @@ Deeper material lives in `references/`, one file per docs page:
 | **Using Pydantic AI**: Serve a Pydantic AI agent on Sectr — streaming, native tool approvals and durable sessions, resumed from the journal alone. | references/getting-started/pydantic-ai.md |
 | **Local dev**: The sectr dev loop — local engine, gateway, dashboard, send/tail. | references/guides/local-dev.md |
 | **Secrets**: Write-only secrets for deployed agents — set, list, remove, and how they reach your code. | references/guides/secrets.md |
-| **Subagents**: A subagent is another agent your agent runs from a tool — what works on Sectr, and the one thing that doesn't yet. | references/guides/subagents.md |
 | **AG-UI endpoint**: Every deployed route is an AG-UI 1.0 endpoint — run a turn with POST, reconnect with GET. Requests, events, approvals, auth and errors. | references/api/ag-ui.md |
 | **Approve or deny actions**: The approvals inbox endpoints — decide pending tool calls from your own frontend. | references/api/approvals.md |
 | **Authentication**: Platform keys, invocation keys, user tokens, and the session cookie — which principal for which endpoint. | references/api/auth.md |

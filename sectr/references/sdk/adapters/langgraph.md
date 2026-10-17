@@ -125,10 +125,18 @@ source of truth next to the journal, so the adapter doesn't use one:
 
 ## Subagents
 
-The rules are the same in every framework (see [subagents](../../guides/subagents.md)):
-a subagent is an opaque tool, which can be gated as a whole, but a gated tool
-inside one isn't supported. An `escalate` tool that runs a `specialist` agent,
-gated as a whole:
+A subagent is another agent your agent runs from a tool. On Sectr it's an
+ordinary tool, and an opaque one: the journal, and every client streaming the
+session, see the tool call and its result, but not the subagent's own messages
+and tool calls, so later turns don't see those either.
+
+To require approval for what a subagent does, gate its tool: approving it runs
+the whole subagent, and denying it runs none of it. A gated tool *inside* a
+subagent isn't supported yet, because Sectr can't pause a turn partway through
+one: such a tool never runs. Instead the agent is rejected when the runner
+starts, or the turn ends with an `ERROR` whose code is `subagent_gated_tool`.
+
+An `escalate` tool that runs a `specialist` agent, gated as a whole:
 
 ```python
 specialist = create_agent(model, tools=[as_langgraph_tool(track_parcel)], name="specialist")
