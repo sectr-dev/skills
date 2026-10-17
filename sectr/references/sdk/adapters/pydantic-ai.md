@@ -31,24 +31,22 @@ app.add_route("/chat", pydantic_ai(agent))
 
 ## Behavior
 
-Each turn runs `agent.iter(...)` on a `message_history` rebuilt
-from the journal, and streams the run: text and reasoning become `MESSAGE_*`
-events (one start/end bracket per model response), tool calls `TOOL_CALL`
-(journaled once, after the message they belong to), and tool results
-`TOOL_RESULT`. A response's thinking (signatures included) is journaled with
-its message and sent back on later turns and approval resumes, to the
-provider that issued it, as Pydantic AI does natively. A gated tool (`requires_approval=True`, a tool that raises
-`ApprovalRequired`, or the deployment's
-[`approval_tools`](../../../SKILL.md#marking-as-gated-in-deployment-config))
-suspends the turn with `TOOL_APPROVAL_REQUIRED`. On approval, Pydantic AI resumes from the history
-with `DeferredToolResults` and runs the tool itself, once; when denied it
-returns the standard rejection text and the tool never runs. System prompts
-(`system_prompt=`, static or dynamic) are restored on every turn;
-`instructions=` is applied by Pydantic AI as usual. Several gated calls in one
-response become sequential approvals, one per turn: the adapter holds the
-undecided ones back until their turn. The adapter itself executes nothing,
-and sibling calls that already finished aren't re-run. See
-[approvals](../../../SKILL.md#defining-gated-tools).
+- **Each turn runs `agent.iter(...)`** on a `message_history` rebuilt from the
+  journal: there's no persistence to set up.
+- **Thinking carries over.** A response's thinking (signatures included) is
+  sent back on later turns and approval resumes, to the provider that issued
+  it, as Pydantic AI does natively.
+- **System prompts** (`system_prompt=`, static or dynamic) are restored on
+  every turn; `instructions=` is applied by Pydantic AI as usual.
+- **Gated tools pause the turn**: `requires_approval=True`, a tool that raises
+  `ApprovalRequired`, or the deployment's
+  [`approval_tools`](../../../SKILL.md#marking-as-gated-in-deployment-config).
+- **An approved call runs once**: Pydantic AI resumes from the history with
+  `DeferredToolResults` and runs the tool itself. A denied call gets the
+  standard rejection text and never runs. Sibling calls that already finished
+  aren't re-run.
+- **Several gated calls in one response** become sequential approvals, one
+  per turn. See [approvals](../../../SKILL.md#defining-gated-tools).
 
 **You don't need to add `DeferredToolRequests` to your output types.** Pausing
 needs it among the run's output types, and Sectr adds it to each run for you.

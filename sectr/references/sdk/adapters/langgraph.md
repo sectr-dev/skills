@@ -42,25 +42,25 @@ app.add_route("/chat", langgraph(graph))
 
 ## Behavior
 
-Each turn streams the graph with `stream_mode=["messages",
-"updates"]`: text and reasoning chunks become `MESSAGE_*` events, tool calls
-`TOOL_CALL`, and tool-node messages `TOOL_RESULT`. A model message's
-reasoning, as the graph stores it (signatures included), and its `name` (a
-named agent's) are journaled with the message and sent back on later turns
-and approval resumes. A gated tool
-(`needs_approval=True`, `HumanInTheLoopMiddleware`'s `interrupt_on`, or
-the deployment's
-[`approval_tools`](../../../SKILL.md#marking-as-gated-in-deployment-config))
-suspends the turn with `TOOL_APPROVAL_REQUIRED`. Other tool calls in the same model message run
-first, and their results are recorded before the pause, so each runs once.
-`approval_tools` also gates the `ToolNode`'s
-other tools, such as plain LangChain tools and MCP tools from
-`langchain-mcp-adapters`. On approval the graph resumes at its tool node and
-runs the call exactly once, as on any turn: your `ToolNode`'s settings, tool
-middleware, injected arguments, `Command` results and the edges out of the
-tool node all apply. A denied call gets the standard rejection text without
-running. Several gated calls in one model message become sequential
-approvals, one per turn. See [approvals](../../../SKILL.md#defining-gated-tools).
+- **Each turn streams the graph afresh** (`graph.astream`), with its message
+  state rebuilt from the journal: the journal is the checkpoint, so don't
+  compile the graph with one of your own.
+- **Reasoning and names carry over.** A model message's reasoning, as the
+  graph stores it (signatures included), and its `name` (a named agent's) are
+  sent back on later turns and approval resumes.
+- **Gated tools pause the turn**: `needs_approval=True`,
+  `HumanInTheLoopMiddleware`'s `interrupt_on`, or the deployment's
+  [`approval_tools`](../../../SKILL.md#marking-as-gated-in-deployment-config),
+  which also gates the `ToolNode`'s other tools, such as plain LangChain tools
+  and MCP tools from `langchain-mcp-adapters`. Other tool calls in the same
+  model message run first, so each runs once.
+- **An approved call runs exactly once**, at the graph's tool node, as on any
+  turn: your `ToolNode`'s settings, tool middleware, injected arguments,
+  `Command` results and the edges out of the tool node all apply. The model
+  generates only the continuation. A denied call gets the standard rejection
+  text without running.
+- **Several gated calls in one model message** become sequential approvals,
+  one per turn. See [approvals](../../../SKILL.md#defining-gated-tools).
 
 ## Supported graphs
 
@@ -84,26 +84,6 @@ clear error instead:
   `create_agent` or `create_react_agent`. (A node of your own that calls
   `with_structured_output` can't be detected; its result isn't journaled as
   the answer.)
-
-## How the adapter works
-
-LangGraph's own human-in-the-loop (`interrupt()`
-with `Command(resume=...)`) needs a checkpointer, which would be a second
-source of truth next to the journal, so the adapter doesn't use one:
-
-- **Every turn is a fresh `graph.astream`**, its message state rebuilt from the
-  journaled transcript: the journal is the checkpoint.
-- **A pause is an exception.** A gated sectr tool raises `ApprovalRequired`, a
-  `BaseException`, so LangGraph's tool error handling can't swallow it; the
-  adapter's wrapper around the tool node raises it for any other gated call
-  (`interrupt_on`, `as_langgraph_tool(..., needs_approval=True)`,
-  `approval_tools`). The adapter journals the model's tool call and ends the
-  turn with `TOOL_APPROVAL_REQUIRED`.
-- **A resume re-enters the graph at its tool node.** The adapter rebuilds the
-  paused state from the journal (with a throwaway in-memory checkpointer, for
-  that one turn only), and the graph's own tool node runs the approved call
-  or answers it with the rejection text; the model generates only the
-  continuation.
 
 ## Limits to know about
 
