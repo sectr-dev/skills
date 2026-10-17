@@ -79,3 +79,5 @@ curl -X POST https://api.sectr.dev/tokens \
   the invocation key if it leaks.
 - Anonymous/guest apps: mint with a generated anonymous id bound to a
   cookie/localStorage.
+
+Full schema: [`POST /tokens`](openapi.json).

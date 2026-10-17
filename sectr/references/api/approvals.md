@@ -16,6 +16,8 @@ tool name, arguments, and reason directly from the payload. Per-session
 status also flips to `awaiting_approval` (visible in `GET /sessions/{id}`
 and `GET /sessions`).
 
+Full schema: [`GET /approvals`](openapi.json).
+
 ## Decide — `POST /sessions/{id}/approval`
 
 Allowed for a platform key, the app's invocation key, or a
@@ -42,3 +44,5 @@ resume is scheduled; the resumed turn streams on the same
 **409** = no pending approval on that session (already decided, or the turn
 ended). **404** = unknown session. Decide exactly once — the decision is a
 journal event, not a setting.
+
+Full schema: [`POST /sessions/{sessionId}/approval`](openapi.json).

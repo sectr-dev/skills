@@ -20,6 +20,9 @@ conversations the sessions API serves.
 | `POST`           | **Run**: start one turn and stream it.                                                                       |
 | `GET ?threadId=` | **Reconnect**: re-stream the thread's latest run, read-only. A Sectr extension (AG-UI 1.0 has no reconnect). |
 
+Full schemas: [`POST /ag-ui/{app}/{route}`](openapi.json) and
+[`GET /ag-ui/{app}/{route}`](openapi.json).
+
 ## Run — `POST`
 
 The body is an AG-UI `RunAgentInput`:
