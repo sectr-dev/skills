@@ -398,7 +398,7 @@ Deeper material lives in `references/`, one file per docs page:
 | **Secrets**: Write-only secrets for deployed agents — set, list, remove, and how they reach your code. | references/guides/secrets.md |
 | **AG-UI endpoint**: Every deployed route is an AG-UI 1.0 endpoint — run a turn with POST, reconnect with GET. Requests, events, approvals, auth and errors. | references/api/ag-ui.md |
 | **Approve or deny actions**: The approvals inbox endpoints — decide pending tool calls from your own frontend. | references/api/approvals.md |
-| **Authentication**: Platform keys, invocation keys, user tokens, and the session cookie — which principal for which endpoint. | references/api/auth.md |
+| **Authentication**: Platform keys, invocation keys and user tokens — which credential for which endpoint. | references/api/auth.md |
 | **API overview**: The public HTTP API — one event journal, SSE tails, and a handful of verbs. | references/api/index.md |
 | **Limits**: Concurrency, capacity and rate limits on the Sectr API, the 429 error codes, and how to retry. | references/api/limits.md |
 | **Send a message**: Create a session, add follow-up turns — 202 means scheduled. | references/api/send-message.md |

@@ -37,7 +37,7 @@ Full schema: `POST /sessions` (look it up with `jq '.paths["/sessions"].post' re
 
 ```sh
 curl -X POST https://api.sectr.dev/sessions/$SESSION_ID/input \
-  -H "Authorization: Bearer $SECTR_API_KEY" \
+  -H "Authorization: Bearer $SECTR_INVOCATION_KEY" \
   -H "Content-Type: application/json" \
   -d '{"input": {"message": "and a refund please"}}'
 ```

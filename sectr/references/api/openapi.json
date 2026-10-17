@@ -17,9 +17,6 @@
   ],
   "security": [
     {
-      "platformSession": []
-    },
-    {
       "platformApiKey": []
     }
   ],
@@ -37,9 +34,6 @@
             "userToken": []
           },
           {
-            "platformSession": []
-          },
-          {
             "platformApiKey": []
           }
         ],
@@ -48,25 +42,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "app",
-                  "route",
-                  "input"
-                ],
-                "properties": {
-                  "app": {
-                    "type": "string",
-                    "description": "app id or name"
-                  },
-                  "route": {
-                    "type": "string",
-                    "description": "agent route, e.g. /customer-support"
-                  },
-                  "input": {
-                    "description": "Opaque JSON, journaled in INVOCATION_STARTED.reason.input. Not empty: a string of only whitespace, or an empty list, is a 400."
-                  }
-                }
+                "$ref": "#/components/schemas/NewSessionRequest"
               }
             }
           }
@@ -77,44 +53,36 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "session_id"
-                  ],
-                  "properties": {
-                    "session_id": {
-                      "type": "string",
-                      "format": "uuid"
-                    }
-                  }
+                  "$ref": "#/components/schemas/SessionCreated"
                 }
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/EmptyInput"
+          },
+          "404": {
+            "description": "unknown app, no active deployment, or a route the deployment doesn't serve"
+          },
           "429": {
-            "description": "concurrency, capacity or rate limit (server policy — the dev gateway never returns it). Retry the same request after the `Retry-After` delay. On `/input` and `/approval` nothing was journaled. On `POST /sessions` normally nothing was either, but if a concurrent request took the last slot between admission and the first turn's claim, an idle session (only `SESSION_CREATED`) may be left behind; it is listed by `GET /sessions` and accepts `/input` later. `code` says which limit tripped (see the body schema).",
-            "headers": {
-              "Retry-After": {
-                "description": "seconds to wait before retrying",
-                "schema": {
-                  "type": "integer",
-                  "minimum": 1
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorWithCode"
-                }
-              }
-            }
+            "$ref": "#/components/responses/TooManyRequests"
           }
         }
       },
       "get": {
         "operationId": "listSessions",
         "summary": "List sessions (sessions tables, approvals inbox source)",
+        "security": [
+          {
+            "invocationKey": []
+          },
+          {
+            "userToken": []
+          },
+          {
+            "platformApiKey": []
+          }
+        ],
         "parameters": [
           {
             "name": "app_id",
@@ -243,6 +211,17 @@
       "get": {
         "operationId": "getSession",
         "summary": "Session metadata (inspector meta bar, tables)",
+        "security": [
+          {
+            "invocationKey": []
+          },
+          {
+            "userToken": []
+          },
+          {
+            "platformApiKey": []
+          }
+        ],
         "parameters": [
           {
             "name": "sessionId",
@@ -275,7 +254,18 @@
       "get": {
         "operationId": "streamSessionEvents",
         "summary": "Journal tail (SSE) — the ONLY live view; never proxied from a runner",
-        "description": "`text/event-stream`. Each frame's `data:` is one event envelope (event.schema.json); the SSE `id:` is the event's UUIDv7 `id`. Replays the full journal from seq 0, then holds the tail open. Resumption: standard `Last-Event-ID` header (or `last_event_id` query param for first-connect) → replay `WHERE seq > $1`.",
+        "description": "`text/event-stream`. Each frame's `data:` is one event envelope (event.schema.json); the SSE `id:` is the event's UUIDv7 `id`. Replays the full journal from seq 0, then holds the tail open. Resumption: standard `Last-Event-ID` header (or `last_event_id` query param for first-connect) → replay `WHERE seq > $1`. A browser's `EventSource` can't set headers: it passes a user token as `?token=` (this endpoint only).",
+        "security": [
+          {
+            "invocationKey": []
+          },
+          {
+            "userToken": []
+          },
+          {
+            "platformApiKey": []
+          }
+        ],
         "parameters": [
           {
             "name": "sessionId",
@@ -314,6 +304,17 @@
         "operationId": "sendSessionInput",
         "summary": "Send a user message (follow-up turn)",
         "description": "Journaled as an INVOCATION_STARTED with reason user_message. 202 means the turn is SCHEDULED — turns run asynchronously; follow the SSE journal tail for the output. An input after an ERRORED turn is accepted (a fresh turn is the recovery path).",
+        "security": [
+          {
+            "invocationKey": []
+          },
+          {
+            "userToken": []
+          },
+          {
+            "platformApiKey": []
+          }
+        ],
         "parameters": [
           {
             "name": "sessionId",
@@ -359,6 +360,17 @@
         "operationId": "decideApproval",
         "summary": "Decide a pending approval (banner, approvals inbox)",
         "description": "Journaled as TOOL_APPROVAL_GRANTED/DENIED, then the platform resumes the turn with an approval_decision invocation.",
+        "security": [
+          {
+            "invocationKey": []
+          },
+          {
+            "userToken": []
+          },
+          {
+            "platformApiKey": []
+          }
+        ],
         "parameters": [
           {
             "name": "sessionId",
@@ -476,21 +488,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -500,21 +498,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -524,21 +508,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -548,21 +518,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -572,21 +528,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -605,21 +547,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -665,21 +593,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -689,21 +603,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -713,21 +613,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -737,21 +623,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -761,21 +633,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "description": "The standard `{error}` body, plus an optional machine-readable `code` on errors that have one (additive: existing errors carry no code).",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "human-readable message"
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "`concurrency_limit` (the app's concurrent-turn cap), `platform_capacity` (the platform-wide cap), `rate_limited` (session-creation rate limit), `beta_full` (signup cap; 403 on POST /alpha/provision)."
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorWithCode"
                 }
               }
             }
@@ -1351,11 +1209,6 @@
   },
   "components": {
     "securitySchemes": {
-      "platformSession": {
-        "type": "apiKey",
-        "in": "cookie",
-        "name": "sectr_session"
-      },
       "platformApiKey": {
         "type": "http",
         "scheme": "bearer"
@@ -2577,7 +2430,7 @@
           },
           "approver": {
             "type": "string",
-            "description": "defaults to the authenticated principal"
+            "description": "attribution for the decision. Omitted, a user token's decision is attributed to its end user (`external_user_id`); other callers record none."
           }
         }
       },

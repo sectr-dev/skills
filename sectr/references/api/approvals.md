@@ -7,7 +7,7 @@ decision.
 
 ```sh
 curl -s https://api.sectr.dev/approvals \
-  -H "Authorization: Bearer $SECTR_API_KEY"
+  -H "Authorization: Bearer $SECTR_PLATFORM_KEY"
 ```
 
 Platform-key only. Returns pending approvals **across all apps** — each item pairs the session
@@ -26,7 +26,7 @@ owns — so an in-app approval button needs no server-side proxy.
 
 ```sh
 curl -X POST https://api.sectr.dev/sessions/$SESSION_ID/approval \
-  -H "Authorization: Bearer $SECTR_API_KEY" \
+  -H "Authorization: Bearer $SECTR_INVOCATION_KEY" \
   -H "Content-Type: application/json" \
   -d '{"approved": true, "approver": "ops-dashboard"}'
 ```
@@ -38,8 +38,9 @@ resume is scheduled; the resumed turn streams on the same
 - **`approved`** — required boolean. `false` denies: the agent receives the
   rejection as the tool's result and continues (it sees a denied call, not a
   crash).
-- **`approver`** — optional attribution; defaults to the authenticated
-  principal (for a user token, its `external_user_id`). The CLI sends `"sectr send"` — you'd send your user's id.
+- **`approver`** — optional attribution. Left out, a user token's decision
+  is attributed to its user (`external_user_id`); with a key, no approver is
+  recorded. The CLI sends `"sectr send"`; from a backend, send your user's id.
 
 **409** = no pending approval on that session (already decided, or the turn
 ended). **404** = unknown session. Decide exactly once — the decision is a

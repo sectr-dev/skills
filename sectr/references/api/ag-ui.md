@@ -186,8 +186,8 @@ Failures after the stream starts are `RUN_ERROR` events.
 limits and any origin allowed:
 
 ```text
-🔌 connect via AG-UI at: https://local.sectr.dev:52817/ag-ui/support-agent/chat
+- 🔌 connect via AG-UI at: https://local.sectr.dev:8420/ag-ui/support-agent/chat
 ```
 
-`{app}` is the local app's name. The port changes each time `sectr dev`
-starts.
+`{app}` is the local app's name. The port stays the same across runs (see
+[ports](../guides/local-dev.md#ports)), so a frontend's local URL stays put.

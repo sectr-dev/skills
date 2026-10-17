@@ -7,8 +7,13 @@ server derives behavior from which one a request carries.
 
 - HTTP header: `Authorization: Bearer skp_…`
 
-Org-scoped; minted in the dashboard (Settings → API keys). Authenticates
-**everything except** end-user session creation.
+Org-scoped; minted in the dashboard (Settings → API keys). For your own
+tools and scripts (it's what the CLI and the dashboard use): the control plane
+(apps, deployments, secrets, API keys), and every session in the org. Sessions
+it creates have no owner and skip the session-creation
+[rate limits](limits.md). It can't mint user tokens or call the
+[AG-UI endpoint](ag-ui.md) (`403`): those take an invocation key
+or a user token.
 
 ## Invocation API key
 
