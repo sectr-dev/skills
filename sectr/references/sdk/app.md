@@ -1,35 +1,26 @@
 # AgentApp
 
-`sectr.AgentApp` is an ordered route registry. One per project; the platform
-discovers it via `entry = "module:attribute"` in `sectr.toml` by
-importing your module.
+`sectr.AgentApp` is the one object your project exposes: `[agent] entry` in
+`sectr.toml` names it as `module:attribute`, and Sectr imports your module to
+find it. [Serving the agent on a route](../../SKILL.md#serving-the-agent-on-a-route)
+shows it in use.
 
-```python
-from sectr import AgentApp
+## `AgentApp(*, name, env)`
 
-app = AgentApp(name="support-agent", env=["OPENROUTER_API_KEY"])
-```
+- **`name`** — the app slug. It should match `[app] name` in `sectr.toml`.
+- **`env`** — the names of the secrets the agent needs (see
+  [secrets](../guides/secrets.md#reaching-your-agent-code)).
 
-## Constructor
+## `app.add_route(path, handler)`
 
-- **`name`** — the app slug used by `sectr deploy` / `sectr secrets` /
-  session creation. It should match `[app] name` in `sectr.toml`.
-- **`env`** — the names of the secrets the agent needs; their values come from
-  `.env` locally and from `sectr secrets` when deployed (see
-  [secrets](../guides/secrets.md)).
+Serves `handler` on `path`. With a framework, the handler is the adapter's:
+`openai_agents(agent)`, `langgraph(graph)` or `pydantic_ai(agent)` (see the
+[adapter reference](adapters/index.md)).
 
-## Routes
+## `@app.agent_route(path)`
 
-Your app consists of multiple *routes*, each of which corresponds to an agent. If you are using an adapter, you simply use `add_route`:
+The decorator form, for a handler of your own: see
+[no framework](no-framework.md).
 
-```python
-from sectr.adapters.openai_agents import openai_agents
-
-app.add_route("/chat", openai_agents(agent))
-```
-
-Without a framework adapter, register a handler of your own with
-`@app.agent_route("/chat")`: see [no framework](no-framework.md).
-
-Paths must start with `/` and be unique - Sectr routes sessions by
-`(app, path)`.
+Paths must start with `/` and be unique in the app: Sectr routes sessions by
+`(app, path)`. Registering a bad or duplicate path raises `ValueError`.

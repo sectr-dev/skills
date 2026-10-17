@@ -106,8 +106,8 @@ agent = Agent(model, tools=[Tool(escalate, requires_approval=True)])
 **Limits.** Where your own code starts the subagent or handles
 what it returns, the adapter can't see its run:
 
-- **`Approval_tools` doesn't reach a delegate's tools.**
-  A tool the policy names on an agent your tool runs (`specialist.run(...)`)
+- **The policy doesn't reach a delegate's tools.** A tool
+  `approval_tools` names on an agent your tool runs (`specialist.run(...)`)
   runs **without approval**. Gate the delegating tool instead.
 - **A delegate that allows `DeferredToolRequests` doesn't fail
   the turn.** A delegate with `output_type=[str, DeferredToolRequests]` hands

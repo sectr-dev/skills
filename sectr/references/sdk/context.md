@@ -45,8 +45,9 @@ state; hand-written loops feed it straight to a provider.
   (the platform journals the approval request and suspends the turn). On an
   approval-resume turn the decision is already in hand, so executing the
   pending tool proceeds.
-- **`ctx.request_approval(name, arguments)`** — explicit sugar that always
-  raises `ApprovalRequired`: for gating an action no single tool expresses.
+- **`ctx.request_approval(name, arguments, reason=...)`** — explicit sugar that
+  always raises `ApprovalRequired`: for gating an action no single tool
+  expresses. The optional `reason` is shown with the pending approval.
 
 ## Transcript shape
 
