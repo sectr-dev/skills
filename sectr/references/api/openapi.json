@@ -790,6 +790,279 @@
         }
       }
     },
+    "/auth/cli": {
+      "post": {
+        "operationId": "startCliLogin",
+        "summary": "Start a browser login for `sectr auth login` (device flow)",
+        "x-scalar-ignore": true,
+        "description": "Anonymous. Creates a pending login request that expires in 10 minutes. The CLI shows `verification_url_complete` and `user_code` to the user and polls `POST /auth/cli/poll` with the secret `device_code` every `interval` seconds. Rate limited (429 with `Retry-After`).",
+        "security": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "client_name": {
+                    "type": "string",
+                    "description": "the CLI's hostname; display only, trimmed to 64 characters"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "request created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "device_code",
+                    "user_code",
+                    "verification_url",
+                    "verification_url_complete",
+                    "expires_in",
+                    "interval"
+                  ],
+                  "properties": {
+                    "device_code": {
+                      "type": "string",
+                      "description": "secret; only the CLI holds it"
+                    },
+                    "user_code": {
+                      "type": "string",
+                      "example": "WDJB-MJHT"
+                    },
+                    "verification_url": {
+                      "type": "string"
+                    },
+                    "verification_url_complete": {
+                      "type": "string"
+                    },
+                    "expires_in": {
+                      "type": "integer",
+                      "example": 600
+                    },
+                    "interval": {
+                      "type": "integer",
+                      "example": 2
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "too many login attempts"
+          },
+          "503": {
+            "description": "non-Postgres deployment"
+          }
+        }
+      }
+    },
+    "/auth/cli/poll": {
+      "post": {
+        "operationId": "pollCliLogin",
+        "summary": "Poll a browser login request",
+        "x-scalar-ignore": true,
+        "description": "Anonymous. `approved` is returned exactly once: that call mints the non-expiring platform key (named `CLI (<client_name>)`) and returns it. Unknown, already-collected and expired device codes all answer `expired`.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "device_code"
+                ],
+                "properties": {
+                  "device_code": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "the request's state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved",
+                        "denied",
+                        "expired"
+                      ]
+                    },
+                    "key": {
+                      "type": "string",
+                      "description": "skp_… full value; only with approved"
+                    },
+                    "key_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "org": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "non-Postgres deployment"
+          }
+        }
+      }
+    },
+    "/auth/cli/requests/{userCode}": {
+      "get": {
+        "operationId": "getCliLoginRequest",
+        "summary": "Look up a browser login request (approval page)",
+        "x-scalar-ignore": true,
+        "description": "Platform principal. The code is matched case- and dash-insensitively.",
+        "parameters": [
+          {
+            "name": "userCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "user_code",
+                    "client_name",
+                    "created_at",
+                    "expires_at",
+                    "status"
+                  ],
+                  "properties": {
+                    "user_code": {
+                      "type": "string"
+                    },
+                    "client_name": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "approved",
+                        "denied",
+                        "consumed"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown or expired"
+          }
+        }
+      }
+    },
+    "/auth/cli/requests/{userCode}/approve": {
+      "post": {
+        "operationId": "approveCliLogin",
+        "summary": "Approve a browser login request",
+        "x-scalar-ignore": true,
+        "description": "Platform principal. Records the approving org; the key is minted when the CLI next polls, in that org.",
+        "parameters": [
+          {
+            "name": "userCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "approved"
+          },
+          "404": {
+            "description": "unknown or expired"
+          },
+          "409": {
+            "description": "not pending (body carries the current `status`)"
+          }
+        }
+      }
+    },
+    "/auth/cli/requests/{userCode}/deny": {
+      "post": {
+        "operationId": "denyCliLogin",
+        "summary": "Deny a browser login request",
+        "x-scalar-ignore": true,
+        "description": "Platform principal.",
+        "parameters": [
+          {
+            "name": "userCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "denied"
+          },
+          "404": {
+            "description": "unknown or expired"
+          },
+          "409": {
+            "description": "not pending (body carries the current `status`)"
+          }
+        }
+      }
+    },
     "/auth/logout": {
       "post": {
         "operationId": "logout",

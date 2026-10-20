@@ -9,14 +9,16 @@ workflows behind the commands, get setup with
 ### `sectr auth login`
 
 ```text
-Validate and store the platform key (the server base is stored too)
+Sign in: opens the dashboard in your browser to approve the request (or pass --key / --with-key to store an API key instead)
 
 Usage: sectr auth login [OPTIONS]
 
 Options:
-      --api <API>  The server base URL. Default: the public endpoint
-      --key <KEY>  Platform API key (`skp_…`). Omitted for `login`: prompted with hidden input
-  -h, --help       Print help
+      --with-key    Read the platform key from a hidden prompt or stdin instead of using the browser
+      --no-browser  Print the approval link without trying to open a browser (remote machines, coding agents)
+      --api <API>   The server base URL. Default: the public endpoint
+      --key <KEY>   Platform API key (`skp_…`). With `login`, stores that key instead of opening the browser
+  -h, --help        Print help
 
 ```
 
@@ -29,7 +31,7 @@ Usage: sectr auth whoami [OPTIONS]
 
 Options:
       --api <API>  The server base URL. Default: the public endpoint
-      --key <KEY>  Platform API key (`skp_…`). Omitted for `login`: prompted with hidden input
+      --key <KEY>  Platform API key (`skp_…`). With `login`, stores that key instead of opening the browser
   -h, --help       Print help
 
 ```
@@ -37,13 +39,13 @@ Options:
 ### `sectr auth logout`
 
 ```text
-Forget the stored key
+Forget the stored key (and revoke it, if the browser login made it)
 
 Usage: sectr auth logout [OPTIONS]
 
 Options:
       --api <API>  The server base URL. Default: the public endpoint
-      --key <KEY>  Platform API key (`skp_…`). Omitted for `login`: prompted with hidden input
+      --key <KEY>  Platform API key (`skp_…`). With `login`, stores that key instead of opening the browser
   -h, --help       Print help
 
 ```

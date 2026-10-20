@@ -75,15 +75,16 @@ Never assume it's already installed.
 4. **Logged in, only before a cloud command** (`sectr deploy`,
    `sectr secrets`, `sectr send --cloud`; local `sectr dev` doesn't need
    it). Run `sectr auth whoami`. If it fails or prints
-   `no stored credentials`, ask the user to:
-   1. sign in at https://app.sectr.dev with GitHub or Google, and create
-      a platform key in Settings → API keys;
-   2. run `sectr auth login` in their own terminal, where it asks for the
-      key with hidden input.
+   `no stored credentials`, run `sectr auth login --no-browser` yourself.
+   It prints a link and a code, then waits up to 10 minutes for the user
+   to approve, so run it in the background (or with a long timeout).
+   Show the user the link and code from its output and ask them to open
+   the link, sign in if asked, check the code matches and click Approve.
+   When the command finishes, run `sectr auth whoami` again.
 
-   The key is a credential: don't ask the user to paste it into the
-   conversation, and don't pass it with `--key` yourself. When they say
-   they're done, run `sectr auth whoami` again.
+   Use `--no-browser` because a browser you open may not be the user's.
+   The key is a credential and never passes through the conversation:
+   don't ask the user to paste one, and don't use `--key` yourself.
 
 ## Supported agent frameworks
 
