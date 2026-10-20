@@ -2,13 +2,13 @@
 
 Sectr runs [LangGraph](https://langchain-ai.github.io/langgraph/) agents the
 same way it runs OpenAI Agents SDK ones: your graph is ordinary LangGraph
-code, exposed on a Sectr route. Sectr journals every turn, streams it to your
+code, served by Sectr. Sectr journals every turn, streams it to your
 frontend, and pauses for approval when a gated tool is called.
 
 This page walks through the support agent that `sectr init` scaffolds on
 LangGraph. For the parts of a project that don't depend on the framework (the
 manifest, secrets, running and deploying), see
-[your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together). You can run it right away:
+[your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-project-fits-together). You can run it right away:
 
 ```sh
 sectr init my-agent --template langgraph
@@ -65,8 +65,8 @@ app.add_route("/chat", langgraph(graph))
 messages and tool calls onto Sectr's session events. Note there's no
 checkpointer in `create_agent`; see [how state works](#how-state-works).
 
-Like any Sectr app, the module must import with no key set
-([why](../../SKILL.md#serving-the-agent-on-a-route)), and
+Like any Sectr project, the module must import with no key set
+([why](../../SKILL.md#serving-the-agent)), and
 LangChain's OpenAI chat model raises if it's built without one: hence the
 fallback to a scripted model above.
 
@@ -149,11 +149,11 @@ the adapter works.
 ## Run, deploy, connect
 
 Run and deploy it like any Sectr project: `sectr dev` locally, then
-`sectr deploy`, and `sectr secrets set OPENAI_API_KEY` for the deployed app's
-key. [Your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together) walks through both.
+`sectr deploy`, and `sectr secrets set OPENAI_API_KEY` for the deployed project's
+key. [Your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-project-fits-together) walks through both.
 
-Every route is an [AG-UI](https://docs.ag-ui.com) endpoint, whatever the
-framework behind it, so a LangGraph route connects to a frontend exactly
+Every agent is an [AG-UI](https://docs.ag-ui.com) endpoint, whatever the
+framework behind it, so a LangGraph agent connects to a frontend exactly
 like any other: no CopilotKit LangGraph integration and no LangGraph
 Platform. [Connecting your frontend](connecting-frontend.md)
 covers it.

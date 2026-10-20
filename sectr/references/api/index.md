@@ -22,7 +22,7 @@ see [authentication](auth.md).
 
 | Area        | Endpoints                                                         | Auth         |
 | ----------- | ----------------------------------------------------------------- | ------------ |
-| Apps        | `GET /apps`, `GET /apps/{appId}`, `GET /apps/{appId}/deployments` | platform key |
+| Projects    | `GET /apps`, `GET /apps/{appId}`, `GET /apps/{appId}/deployments` | platform key |
 | Deployments | `POST /deployments`, `POST /deployments/{deploymentId}/activate`  | platform key |
 | Secrets     | `PUT /secrets/{key}`, `GET /secrets`, `DELETE /secrets/{key}`     | platform key |
 | API keys    | `GET /api-keys`, `POST /api-keys`, `DELETE /api-keys/{keyId}`     | platform key |

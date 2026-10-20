@@ -2,13 +2,13 @@
 
 Sectr runs [Pydantic AI](https://ai.pydantic.dev/) agents the same way it runs
 OpenAI Agents SDK and LangGraph ones: your agent is ordinary `pydantic_ai.Agent`
-code, exposed on a Sectr route. Sectr journals every turn, streams it to your
+code, served by Sectr. Sectr journals every turn, streams it to your
 frontend, and pauses for approval when a gated tool is called.
 
 This page walks through the support agent that `sectr init` scaffolds on
 Pydantic AI. For the parts of a project that don't depend on the framework
 (the manifest, secrets, running and deploying), see
-[your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together). You can run it right away:
+[your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-project-fits-together). You can run it right away:
 
 ```sh
 sectr init my-agent --template pydantic-ai
@@ -66,8 +66,8 @@ app.add_route("/chat", pydantic_ai(agent))
 `pydantic_ai(agent)` is the whole integration: it maps the agent's streamed
 text, reasoning, tool calls and tool results onto Sectr's session events.
 
-Like any Sectr app, the module must import with no key set
-([why](../../SKILL.md#serving-the-agent-on-a-route)). A model
+Like any Sectr project, the module must import with no key set
+([why](../../SKILL.md#serving-the-agent)). A model
 *string* such as `Agent("openai:gpt-4o-mini")` raises at construction when its
 provider key is missing, so either build the model only when the key is
 present (as above), or pass `defer_model_check=True`:
@@ -139,10 +139,10 @@ adapter works.
 ## Run, deploy, connect
 
 Run and deploy it like any Sectr project: `sectr dev` locally, then
-`sectr deploy`, and `sectr secrets set OPENAI_API_KEY` for the deployed app's
-key. [Your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together) walks through both.
+`sectr deploy`, and `sectr secrets set OPENAI_API_KEY` for the deployed project's
+key. [Your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-project-fits-together) walks through both.
 
-Every route is an [AG-UI](https://docs.ag-ui.com) endpoint, whatever the
-framework behind it, so a Pydantic AI route connects to a frontend exactly like
+Every agent is an [AG-UI](https://docs.ag-ui.com) endpoint, whatever the
+framework behind it, so a Pydantic AI agent connects to a frontend exactly like
 any other. [Connecting your frontend](connecting-frontend.md)
 covers it.

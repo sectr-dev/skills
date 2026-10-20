@@ -14,7 +14,7 @@
   `https://local.sectr.dev:8420` from any browser.
 - **The dashboard** — opened automatically pointed at this gateway
   (skip with `--no-open` in CI). The local journal appears in the same
-  session inspector you use for deployed apps.
+  session inspector you use for deployed projects.
 - **Manifest-aware** — the manifest is re-inspected on the next turn, so
   agent-code edits apply on the following invocation; a changed manifest
   creates the next local deployment version. `sectr dev` holds the engine,

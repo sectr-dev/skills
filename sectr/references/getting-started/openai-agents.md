@@ -1,7 +1,7 @@
 # Using the OpenAI Agents SDK
 
 Sectr runs [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/)
-agents as ordinary SDK code, exposed on a Sectr route. Sectr journals every
+agents as ordinary SDK code, served by Sectr. Sectr journals every
 turn, streams it to your frontend, and pauses for approval when a gated tool
 is called.
 
@@ -14,7 +14,7 @@ sectr init my-agent --template openai-agents
 
 Add `--frontend copilotkit` for a CopilotKit chat app wired to it. For the
 parts of a project that don't depend on the framework (the manifest, secrets,
-running and deploying), see [your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together).
+running and deploying), see [your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-project-fits-together).
 
 ## Install
 
@@ -96,9 +96,9 @@ along with handoffs, subagents and the current limits.
 ## Run, deploy, connect
 
 Run and deploy it like any Sectr project: `sectr dev` locally, then
-`sectr deploy`, and `sectr secrets set OPENAI_API_KEY` for the deployed app's
-key. [Your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together) walks through both.
+`sectr deploy`, and `sectr secrets set OPENAI_API_KEY` for the deployed project's
+key. [Your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-project-fits-together) walks through both.
 
-Every route is an [AG-UI](https://docs.ag-ui.com) endpoint, so the agent
+Every agent is an [AG-UI](https://docs.ag-ui.com) endpoint, so the agent
 connects to a frontend like any other.
 [Connecting your frontend](connecting-frontend.md) covers it.

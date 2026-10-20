@@ -9,7 +9,7 @@ server derives behavior from which one a request carries.
 
 Org-scoped; minted in the dashboard (Settings → API keys). For your own
 tools and scripts (it's what the CLI and the dashboard use): the control plane
-(apps, deployments, secrets, API keys), and every session in the org. Sessions
+(projects, deployments, secrets, API keys), and every session in the org. Sessions
 it creates have no owner and skip the session-creation
 [rate limits](limits.md). It can't mint user tokens or call the
 [AG-UI endpoint](ag-ui.md) (`403`): those take an invocation key
@@ -19,9 +19,9 @@ or a user token.
 
 - HTTP header: `Authorization: Bearer ski_…`
 
-Per-app; the **trusted-backend / minting credential**. Scoped to one app (the
-`app_id` is minted with the key), with the full data plane for that app: it
-can create sessions and read, stream, and talk to **every** session of the app
+Per-project; the **trusted-backend / minting credential**. Scoped to one project (the
+`app_id` is minted with the key), with the full data plane for that project: it
+can create sessions and read, stream, and talk to **every** session of the project
 (no per-user scoping).
 
 > **Never ship this key to a browser in a multi-user app**: Anyone holding it can read every end user's transcripts and create unlimited
@@ -35,7 +35,7 @@ curl -X POST https://api.sectr.dev/sessions \
   -d '{"app": "support-agent", "route": "/chat", "input": {"message": "hi"}}'
 ```
 
-A leaked invocation key is contained to its app: it can't read other apps'
+A leaked invocation key is contained to its project: it can't read other projects'
 sessions, touch secrets, or deploy. Rotate freely: new sessions use the new
 key, existing sessions live in the journal regardless.
 
@@ -44,7 +44,7 @@ client credential — that just works. If such an app later gains end users,
 note that (a) transcripts are shared between everyone holding the key, and
 (b) sessions created with `ski_` have **no owner**, so user tokens can never
 see them — they stay backend-only forever. A public page holding `ski_` also
-lets anyone create sessions; per-app concurrency quotas bound, but don't
+lets anyone create sessions; per-project concurrency quotas bound, but don't
 remove, that exposure.
 
 ## User token (`sks_…`)

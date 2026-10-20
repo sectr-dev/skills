@@ -1,6 +1,6 @@
 # Framework adapters
 
-Each adapter serves an agent written with one framework on a Sectr route.
+Each adapter serves an agent written with one framework as a Sectr agent.
 Each has its own page, with its signature, behavior and limits:
 
 - [OpenAI Agents SDK](openai-agents.md), `sectr.adapters.openai_agents`

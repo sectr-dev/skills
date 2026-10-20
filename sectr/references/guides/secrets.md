@@ -7,7 +7,7 @@ receives them as environment variables at spawn time.
 
 ## Managing secrets
 
-Secrets are scoped **per app** (the `[app] name` slug in `sectr.toml`). From
+Secrets are scoped **per project** (the `[app] name` slug in `sectr.toml`). From
 the project directory:
 
 ```sh

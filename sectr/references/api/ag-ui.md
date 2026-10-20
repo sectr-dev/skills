@@ -1,6 +1,6 @@
 # AG-UI endpoint
 
-Every route you deploy is also an [AG-UI](https://docs.ag-ui.com) 1.0
+Every agent you deploy is also an [AG-UI](https://docs.ag-ui.com) 1.0
 endpoint, so any AG-UI client (CopilotKit, `@ag-ui/client`'s `HttpAgent`, your
 own) can drive your agent. This page is the wire reference; for wiring up a
 chat UI, start with [connecting your frontend](../getting-started/connecting-frontend.md).
@@ -9,9 +9,9 @@ chat UI, start with [connecting your frontend](../getting-started/connecting-fro
 https://api.sectr.dev/ag-ui/{app}/{route}
 ```
 
-`{app}` is the app's slug or id; `{route}` is the route path from
+`{app}` is the project's slug or id; `{route}` is the agent's path from
 `sectr.toml` without its leading slash (`/chat` → `/ag-ui/support-agent/chat`).
-`sectr deploy` and `sectr dev` print the full URL for each route. The
+`sectr deploy` and `sectr dev` print the full URL for each agent. The
 endpoint is another view of the [session journal](index.md): the same
 conversations the sessions API serves.
 
@@ -173,9 +173,9 @@ Requests refused before the stream starts get a JSON body
 | ------ | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
 | `400`  | malformed `RunAgentInput`, `protocolVersion` not 1.x, `threadId` not a UUID, trailing message not `user`, history on a new thread | `threadId` missing or not a UUID    |
 | `401`  | missing, unknown, revoked or expired token                                                                                        | same                                |
-| `403`  | a platform key, or a token for another app                                                                                        | same                                |
-| `404`  | unknown app, route not in the active deployment (the message lists the routes), or someone else's thread                          | same                                |
-| `409`  | the thread is mid-turn (reconnect instead), is waiting for an approval (answer it with `resume`), or belongs to another route     | the thread belongs to another route |
+| `403`  | a platform key, or a token for another project                                                                                    | same                                |
+| `404`  | unknown project, agent not in the active deployment (the message lists the agents), or someone else's thread                      | same                                |
+| `409`  | the thread is mid-turn (reconnect instead), is waiting for an approval (answer it with `resume`), or belongs to another agent     | the thread belongs to another agent |
 | `429`  | a [limit](limits.md) — retry after `Retry-After`; nothing was recorded                                                            | never                               |
 
 Failures after the stream starts are `RUN_ERROR` events.
@@ -189,5 +189,5 @@ limits and any origin allowed:
 - 🔌 connect via AG-UI at: https://local.sectr.dev:8420/ag-ui/support-agent/chat
 ```
 
-`{app}` is the local app's name. The port stays the same across runs (see
+`{app}` is the local project's name. The port stays the same across runs (see
 [ports](../guides/local-dev.md#ports)), so a frontend's local URL stays put.

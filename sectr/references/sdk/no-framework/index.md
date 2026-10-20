@@ -1,6 +1,6 @@
 # No framework
 
-Without a framework adapter, your agent is one async generator per route. It
+Without a framework adapter, your agent is one async generator per agent. It
 receives a [`SessionContext`](context.md) (the conversation so
 far, and why this turn started), calls your model, and yields events. Sectr
 journals them, streams them to clients, and rebuilds the conversation from
@@ -29,7 +29,7 @@ async def chat(ctx: SessionContext) -> AsyncIterator[RunnerEvent]:
   itself; there's no turn-end event to yield.
 - **Create model clients lazily**, inside the handler or on first use: Sectr
   imports your module before any secret is set (see
-  [your first agent](../../../SKILL.md#serving-the-agent-on-a-route)).
+  [your first agent](../../../SKILL.md#serving-the-agent)).
 
 ## A turn
 

@@ -730,7 +730,7 @@
                     },
                     "created": {
                       "type": "boolean",
-                      "description": "this sign-in created the org (route to the Getting-started checklist)"
+                      "description": "this sign-in created the org"
                     },
                     "expires_at": {
                       "type": "string",
@@ -1548,6 +1548,12 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "when the value was last replaced; null if never"
           }
         }
       },
@@ -2368,6 +2374,10 @@
           },
           "event_count": {
             "type": "integer"
+          },
+          "title": {
+            "type": "string",
+            "description": "Display label, server-computed: today the first user message's text, truncated. Display it, don't parse it: the derivation may change. Absent when there's no text to show (no user message yet, or one without text)."
           },
           "external_user_id": {
             "type": "string",

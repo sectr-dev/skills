@@ -8,10 +8,10 @@ available for everyone. Limits are **server policy**: they apply on
 
 | Limit                           | Default                 | Applies to                                                             |
 | ------------------------------- | ----------------------- | ---------------------------------------------------------------------- |
-| Concurrent turns per app        | 3                       | every credential of the app                                            |
-| Concurrent turns, platform-wide | set by Sectr (capacity) | all apps                                                               |
-| Session creation per end user   | 60 / hour, burst 10     | [user tokens](auth.md) (`sks_`), per `(app, user)`                     |
-| Session creation per app        | 600 / hour, burst 60    | [invocation keys](auth.md) (`ski_`), shared by everyone using that key |
+| Concurrent turns per project    | 3                       | every credential of the project                                        |
+| Concurrent turns, platform-wide | set by Sectr (capacity) | all projects                                                           |
+| Session creation per end user   | 60 / hour, burst 10     | [user tokens](auth.md) (`sks_`), per `(project, user)`                 |
+| Session creation per project    | 600 / hour, burst 60    | [invocation keys](auth.md) (`ski_`), shared by everyone using that key |
 
 The platform key (dashboard playground, CLI) is exempt from the session
 creation rate limits. A turn counts against the concurrency limits while it
@@ -29,11 +29,11 @@ and a JSON body:
   "code": "concurrency_limit" }
 ```
 
-| `code`              | Meaning                                                   | `Retry-After`             |
-| ------------------- | --------------------------------------------------------- | ------------------------- |
-| `concurrency_limit` | Your app already has its maximum number of turns running. | 5 s                       |
-| `platform_capacity` | Sectr as a whole is at capacity right now.                | 10 s                      |
-| `rate_limited`      | Too many sessions created recently (per user or per app). | time until the next token |
+| `code`              | Meaning                                                       | `Retry-After`             |
+| ------------------- | ------------------------------------------------------------- | ------------------------- |
+| `concurrency_limit` | Your project already has its maximum number of turns running. | 5 s                       |
+| `platform_capacity` | Sectr as a whole is at capacity right now.                    | 10 s                      |
+| `rate_limited`      | Too many sessions created recently (per user or per project). | time until the next token |
 
 A rejected `POST /sessions/{id}/input` or `/approval` changes nothing: no
 event is journaled, so it can simply be retried. A rejected `POST /sessions`

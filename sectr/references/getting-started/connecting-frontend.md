@@ -1,12 +1,12 @@
 # Connecting your frontend
 
-Every route you deploy is also an [AG-UI](https://docs.ag-ui.com) endpoint.
+Every agent you deploy is also an [AG-UI](https://docs.ag-ui.com) endpoint.
 That means [CopilotKit](https://docs.copilotkit.ai)'s React chat components
 (and any other AG-UI client) talk to your agent with no SDK of ours and no
 event parsing on your side: streaming text, tool calls and their results,
 and approvals as native interrupts.
 
-`sectr dev` and `sectr deploy` both print the endpoint for each route:
+`sectr dev` and `sectr deploy` both print the endpoint for each agent:
 
 ```text
 🔌 connect via AG-UI at: https://api.sectr.dev/ag-ui/support-agent/chat
@@ -16,13 +16,13 @@ and approvals as native interrupts.
 
 [`sectr-copilotkit-starter`](https://github.com/sectr-dev/sectr-copilotkit-starter)
 is CopilotKit's own quickstart with one change: the agent is your Sectr agent.
-It ships with the support agent from [your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-app-fits-together)
-in `agent/`, on two routes: `/chat_oai` (OpenAI Agents SDK) and
+It ships with the support agent from [your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-project-fits-together)
+in `agent/`, on two agents: `/chat_oai` (OpenAI Agents SDK) and
 `/chat_langgraph` (the same agent on LangGraph, with its own chat page at
 `/langgraph`; see [using LangGraph](langgraph.md)).
 
 Starting a new project instead? `sectr init my-agent --frontend copilotkit`
-scaffolds the same app around a fresh agent on one `/chat` route, with
+scaffolds the same app around a fresh agent at one `/chat` path, with
 either framework.
 
 ```sh
@@ -69,7 +69,7 @@ cd agent && sectr deploy
 Then set two variables wherever the Next.js app runs:
 
 - `SECTR_AGUI_URL` — the `chat_oai` AG-UI URL `sectr deploy` printed.
-- `SECTR_INVOCATION_KEY` — your app's invocation key (dashboard →
+- `SECTR_INVOCATION_KEY` — your project's invocation key (dashboard →
   Settings → API keys). **Server-side only**: the app uses it to mint a
   per-user token for each visitor; it never reaches the browser.
 
@@ -95,7 +95,7 @@ export const GET = handler;
 export const POST = handler;
 ```
 
-To serve several routes from one CopilotKit app, give each its own `agentId`
+To serve several agents from one CopilotKit app, give each its own `agentId`
 in the Runtime's agents map. The
 [`sectr-copilotkit-starter`](https://github.com/sectr-dev/sectr-copilotkit-starter)
 does this with the OpenAI Agents SDK and LangGraph versions of its support
@@ -215,7 +215,7 @@ across restarts and across devices.
 ### When Sectr is busy
 
 During the beta, a run can be refused before it starts with
-`429 Too Many Requests`: your app already has its maximum number of turns
+`429 Too Many Requests`: your project already has its maximum number of turns
 running, Sectr is at capacity, or a user has started too many conversations
 recently. Nothing is recorded for a refused run, so wait the `Retry-After`
 header's seconds and send the same run again. See

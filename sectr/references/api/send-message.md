@@ -19,9 +19,9 @@ curl -X POST https://api.sectr.dev/sessions \
 { "session_id": "0198c7a2-…" }
 ```
 
-- `app` — the app slug (as `sectr deploy` created it) or its id;
-- `route` — which agent route handles the conversation (e.g. `/chat`;
-  the app's routes are in `GET /apps/{id}`);
+- `app` — the project slug (as `sectr deploy` created it) or its id;
+- `route` — which agent handles the conversation, by its path (e.g. `/chat`;
+  the project's agents are in `GET /apps/{id}`);
 - `input` — **opaque JSON**, yours to define; it is journaled verbatim and
   arrives in the agent as `ctx.input`. The dashboard sends
   `{"message": "…"}` — any shape works if your agent reads it. It can't be

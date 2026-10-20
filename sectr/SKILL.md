@@ -20,9 +20,9 @@ Sectr is a PaaS for hosting AI agents: develop with any agent framework,
 debug locally with `sectr dev`, and deploy to Sectr Cloud with
 `sectr deploy`. Agents are written with the OpenAI Agents SDK, LangGraph,
 Pydantic AI, or no framework at all (see "Supported agent frameworks"
-below). Every deployed route
+below). Every deployed agent
 is also an AG-UI endpoint, so a CopilotKit chat (or any AG-UI client)
-connects to it directly. Deployed apps run under concurrency and rate
+connects to it directly. Deployed projects run under concurrency and rate
 limits (`references/api/limits.md`).
 
 The runtime is built around a few invariants that shape everything
@@ -76,9 +76,8 @@ Never assume it's already installed.
    `sectr secrets`, `sectr send --cloud`; local `sectr dev` doesn't need
    it). Run `sectr auth whoami`. If it fails or prints
    `no stored credentials`, ask the user to:
-   1. sign in at https://app.sectr.dev with GitHub or Google, and click
-      **Create CLI key** (in the Getting-started checklist, or
-      Settings → API keys);
+   1. sign in at https://app.sectr.dev with GitHub or Google, and create
+      a platform key in Settings → API keys;
    2. run `sectr auth login` in their own terminal, where it asks for the
       key with hidden input.
 
@@ -102,10 +101,10 @@ Each adapter supports most, not all, of its framework: the
 [adapter reference](references/sdk/adapters/index.md) lists what each one does and
 its limits (subagents, structured output, checkpointers and so on).
 
-## Conceptual overview: how a Sectr app fits together
+## Conceptual overview: how a Sectr project fits together
 
 This section walks through the parts every Sectr project has, whatever its
-framework: the `sectr.toml` manifest, serving the agent on a route, tools and
+framework: the `sectr.toml` manifest, serving the agent, tools and
 approvals, running locally, and deploying. It uses the support agent that
 `sectr init` scaffolds (it looks up orders and issues refunds, with a human
 approving each refund) as the example.
@@ -113,7 +112,7 @@ approving each refund) as the example.
 **Read it to understand Sectr, not as steps to follow.** Don't scaffold a
 project, copy this example, or run these commands unless the user asked
 for that. In an existing project, find the same pieces in the user's own
-code (`sectr.toml`, the `AgentApp` and its routes, their tools) and work
+code (`sectr.toml`, the `AgentApp` and its agents, their tools) and work
 from those.
 
 ### Project setup
@@ -127,7 +126,7 @@ sectr init my-agent
 `sectr init` asks two things:
 
 - **The framework:** the OpenAI Agents SDK, LangGraph or Pydantic AI. Each is
-  the same support agent on the same `/chat` route, with the same file names;
+  the same support agent at the same `/chat` path, with the same file names;
   see [using the OpenAI Agents SDK](references/getting-started/openai-agents.md),
   [using LangGraph](references/getting-started/langgraph.md) and
   [using Pydantic AI](references/getting-started/pydantic-ai.md).
@@ -143,7 +142,7 @@ Without a frontend, this generates:
 ```text
 my-agent/
 ├── sectr.toml     # <-- the Sectr manifest
-├── app.py         # <-- your agent, and the route that serves it
+├── app.py         # <-- your agent, and the line that serves it
 ├── tools.py       # its tools
 ├── fake.py        # a mock model, used when no API key is set
 ├── pyproject.toml
@@ -178,7 +177,7 @@ entry = "app:app"
 python = "3.12"
 ```
 
-- **`[app] name`** names the app; its slug identifies it to `sectr deploy`
+- **`[app] name`** names the project; its slug identifies it to `sectr deploy`
   and `sectr secrets`.
 - **`[agent] entry`** is where your `AgentApp` lives, as `module:attribute`.
 
@@ -186,10 +185,10 @@ Two optional sections come up later: `[deploy] approval_tools`, to
 [gate tools by config](#marking-as-gated-in-deployment-config),
 and `[dev] port`, to [pin the local port](references/guides/local-dev.md#ports).
 
-### Serving the agent on a route
+### Serving the agent
 
-`app.py` defines your agent in ordinary framework code, then serves it on a
-route of an `AgentApp`, through the adapter for its framework:
+`app.py` defines your agent in ordinary framework code, then serves it
+through an `AgentApp`, through the adapter for its framework:
 
 ```python
 from sectr import AgentApp
@@ -198,7 +197,7 @@ app = AgentApp(name="my-agent", env=["OPENAI_API_KEY"])
 app.add_route("/chat", openai_agents(agent))  # or langgraph(graph), pydantic_ai(agent)
 ```
 
-- **A route serves one agent.** An app can have several, each on its own path.
+- **Each agent has its own path.** A project can have several agents, each served at a path like `/chat`.
 - **`env`** lists the secrets the agent needs, by name. Their values come
   from `.env` locally and from `sectr secrets` when deployed (see
   [secrets](references/guides/secrets.md)).
@@ -212,8 +211,8 @@ in its journal, so a conversation survives restarts, redeploys and
 scale-to-zero.
 
 One rule applies whatever the framework: **your module must import cleanly
-with no secrets set.** `sectr dev` and `sectr deploy` import your app to find
-its routes before any secret is injected, so build anything that needs a key
+with no secrets set.** `sectr dev` and `sectr deploy` import your module to find
+its agents before any secret is injected, so build anything that needs a key
 (a model client, say) only when the key is present. The scaffolded
 `fake.py` does that: with no `OPENAI_API_KEY`, a mock model answers, so the
 first run needs no keys at all.
@@ -249,18 +248,18 @@ deployment 01a0d532-d771-7563-96bd-56f40cb28b2b: version 1 — building…
 🔌 connect via AG-UI at: https://api.sectr.dev/ag-ui/my-agent/chat
 ```
 
-This builds your agent in the cloud, finds its routes, and serves each as a
-live HTTP endpoint. The dashboard URL shows the deployed app. The last line
-is the route's [AG-UI](https://docs.ag-ui.com) endpoint, what a chat frontend
+This builds your agent in the cloud, finds its agents, and serves each as a
+live HTTP endpoint. The dashboard URL shows the deployed project. The last line
+is the agent's [AG-UI](https://docs.ag-ui.com) endpoint, what a chat frontend
 connects to.
 
-Each `sectr deploy` makes a new version of the app. New sessions run on the
+Each `sectr deploy` makes a new version of the project. New sessions run on the
 newest version that built successfully; a session already under way keeps
 the version it started on, so a deploy never interrupts a conversation. To
-roll back, use **Rollback to this deployment** on the app's page in the
+roll back, use **Rollback to this deployment** on the project's page in the
 dashboard.
 
-Then give the deployed app its key, and chat with it:
+Then give the deployed project its key, and chat with it:
 
 ```sh
 sectr secrets set OPENAI_API_KEY
@@ -390,13 +389,13 @@ Deeper material lives in `references/`, one file per docs page:
 
 | Page | File |
 | --- | --- |
-| **Connecting your frontend**: Put a CopilotKit chat on your deployed agent — every Sectr route is an AG-UI endpoint, so CopilotKit's React components work as-is. | references/getting-started/connecting-frontend.md |
+| **Connecting your frontend**: Put a CopilotKit chat on your deployed agent — every Sectr agent is an AG-UI endpoint, so CopilotKit's React components work as-is. | references/getting-started/connecting-frontend.md |
 | **Using LangGraph**: Serve a LangGraph agent on Sectr — streaming, approvals and durable sessions for your graph, with no checkpointer to run. | references/getting-started/langgraph.md |
 | **Using the OpenAI Agents SDK**: Serve an OpenAI Agents SDK agent on Sectr — streaming, native tool approvals and durable sessions, with the agent unchanged. | references/getting-started/openai-agents.md |
 | **Using Pydantic AI**: Serve a Pydantic AI agent on Sectr — streaming, native tool approvals and durable sessions, resumed from the journal alone. | references/getting-started/pydantic-ai.md |
 | **Local dev**: The sectr dev loop — local engine, gateway, dashboard, send/tail. | references/guides/local-dev.md |
 | **Secrets**: Write-only secrets for deployed agents — set, list, remove, and how they reach your code. | references/guides/secrets.md |
-| **AG-UI endpoint**: Every deployed route is an AG-UI 1.0 endpoint — run a turn with POST, reconnect with GET. Requests, events, approvals, auth and errors. | references/api/ag-ui.md |
+| **AG-UI endpoint**: Every deployed agent is an AG-UI 1.0 endpoint — run a turn with POST, reconnect with GET. Requests, events, approvals, auth and errors. | references/api/ag-ui.md |
 | **Approve or deny actions**: The approvals inbox endpoints — decide pending tool calls from your own frontend. | references/api/approvals.md |
 | **Authentication**: Platform keys, invocation keys and user tokens — which credential for which endpoint. | references/api/auth.md |
 | **API overview**: The public HTTP API — one event journal, SSE tails, and a handful of verbs. | references/api/index.md |
@@ -409,7 +408,7 @@ Deeper material lives in `references/`, one file per docs page:
 | **LangGraph adapter**: sectr.adapters.langgraph — serve a LangGraph graph: its signatures, behavior, the graphs it supports, and its limits. | references/sdk/adapters/langgraph.md |
 | **OpenAI Agents SDK adapter**: sectr.adapters.openai_agents — serve an OpenAI Agents SDK agent: its signature, behavior, handoffs, subagents and limits. | references/sdk/adapters/openai-agents.md |
 | **Pydantic AI adapter**: sectr.adapters.pydantic_ai — serve a Pydantic AI agent: its signature, behavior and limits. | references/sdk/adapters/pydantic-ai.md |
-| **AgentApp**: The route registry and manifest source — the one sectr object your project exposes. | references/sdk/app.md |
+| **AgentApp**: The agent registry and manifest source — the one sectr object your project exposes. | references/sdk/app.md |
 | **SessionContext**: The argument of a handler without a framework: the conversation, why the turn started, and running tools. | references/sdk/no-framework/context.md |
 | **No framework**: Write the agent loop yourself: a handler that reads the conversation, calls the model, and yields the events Sectr journals. | references/sdk/no-framework/index.md |
 | **Tools**: sectr.tools: tools from plain functions, for agents without a framework and for LangGraph. | references/sdk/tools.md |

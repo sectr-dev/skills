@@ -10,7 +10,7 @@ curl -s https://api.sectr.dev/approvals \
   -H "Authorization: Bearer $SECTR_PLATFORM_KEY"
 ```
 
-Platform-key only. Returns pending approvals **across all apps** — each item pairs the session
+Platform-key only. Returns pending approvals **across all projects** — each item pairs the session
 with the `TOOL_APPROVAL_REQUIRED` event envelope, so your UI renders the
 tool name, arguments, and reason directly from the payload. Per-session
 status also flips to `awaiting_approval` (visible in `GET /sessions/{id}`
@@ -20,7 +20,7 @@ Full schema: `GET /approvals` (look it up with `jq '.paths["/approvals"].get' re
 
 ## Decide — `POST /sessions/{id}/approval`
 
-Allowed for a platform key, the app's invocation key, or a
+Allowed for a platform key, the project's invocation key, or a
 [user token](auth.md#user-token-sks_) on a session that user
 owns — so an in-app approval button needs no server-side proxy.
 
