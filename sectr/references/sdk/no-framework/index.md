@@ -1,4 +1,4 @@
-# No framework
+# Without a framework
 
 Without a framework adapter, your agent is one async generator per agent. It
 receives a [`SessionContext`](context.md) (the conversation so
