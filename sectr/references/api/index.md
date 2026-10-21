@@ -39,5 +39,4 @@ see [authentication](auth.md).
 3. [Stream a session](stream.md) — the SSE tail + resumption
 4. [Approve or deny from your UI](approvals.md)
 5. [AG-UI endpoint](ag-ui.md) — CopilotKit and other AG-UI clients
-6. [Deploy lifecycle](https://docs.sectr.dev/reference/api/deploy-lifecycle/)
-7. [Limits](limits.md) — concurrency, rate limits, and the `429` codes
+6. [Limits](limits.md) — concurrency, rate limits, and the `429` codes

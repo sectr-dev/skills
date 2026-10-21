@@ -9,138 +9,79 @@ and approvals as native interrupts.
 `sectr dev` and `sectr deploy` both print the endpoint for each agent:
 
 ```text
-🔌 connect via AG-UI at: https://api.sectr.dev/ag-ui/support-agent/chat
+🔌 connect via AG-UI at: https://api.sectr.dev/ag-ui/my-agent/chat
 ```
 
-## Quickstart: the starter app
+> **Starting fresh?**: `sectr init my-agent --frontend copilotkit` scaffolds a Next.js app with a
+> CopilotKit chat already wired to a new agent.
+> [Your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-project-fits-together) walks through running it
+> locally and against the deployed agent.
 
-[`sectr-copilotkit-starter`](https://github.com/sectr-dev/sectr-copilotkit-starter)
-is CopilotKit's own quickstart with one change: the agent is your Sectr agent.
-It ships with the support agent from [your first agent](../../SKILL.md#conceptual-overview-how-a-sectr-project-fits-together)
-in `agent/`, on two agents: `/chat_oai` (OpenAI Agents SDK) and
-`/chat_langgraph` (the same agent on LangGraph, with its own chat page at
-`/langgraph`; see [using LangGraph](langgraph.md)).
-
-Starting a new project instead? `sectr init my-agent --frontend copilotkit`
-scaffolds the same app around a fresh agent at one `/chat` path, with
-either framework.
-
-```sh
-git clone https://github.com/sectr-dev/sectr-copilotkit-starter
-cd sectr-copilotkit-starter
-npm install
-```
-
-Run the agent locally — no keys or signup needed:
-
-```sh
-cd agent && sectr dev
-# - 🔌 connect via AG-UI at: https://local.sectr.dev:8420/ag-ui/support-agent/chat_oai
-# - 🔌 connect via AG-UI at: https://local.sectr.dev:8420/ag-ui/support-agent/chat_langgraph
-```
-
-Then start the app from the repo root in another terminal:
-
-```sh
-npm run dev
-```
-
-The starter's `.env.development` already points at the `chat_oai` URL, and
-the app derives the LangGraph one from it. If `sectr dev` says it picked
-another port (8420 was busy), put the `chat_oai` URL it printed in
-`.env.local`:
-
-```sh
-echo "SECTR_AGUI_URL=https://local.sectr.dev:8421/ag-ui/support-agent/chat_oai" > .env.local
-```
-
-Open [localhost:3000](http://localhost:3000) and ask about order 123, then ask
-for a refund: `refund` needs approval, so the agent pauses and the chat shows
-**Approve** / **Deny**. Ask again and refresh the page while the agent is
-still looking the order up — the turn keeps running on Sectr, and the
-reloaded chat picks it back up.
-
-### Deploy it
-
-```sh
-cd agent && sectr deploy
-```
-
-Then set two variables wherever the Next.js app runs:
-
-- `SECTR_AGUI_URL` — the `chat_oai` AG-UI URL `sectr deploy` printed.
-- `SECTR_INVOCATION_KEY` — your project's invocation key (dashboard →
-  Settings → API keys). **Server-side only**: the app uses it to mint a
-  per-user token for each visitor; it never reaches the browser.
+This page covers adding Sectr to a CopilotKit app, and how the pieces fit
+together.
 
 ## How it fits together
 
-The code that touches Sectr is three small files plus one package.
+The code that touches Sectr is one package plus three small files.
 
-**1. The Copilot Runtime route** — CopilotKit's quickstart, with a
-`SectrAgent` pointing at your agent instead of CopilotKit's built-in one, and
-`SectrRunner` in place of CopilotKit's default runner:
-
-```ts
-// app/api/copilotkit/[[...slug]]/route.ts
-import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
-import { SectrAgent, SectrRunner } from "@sectr/copilotkit";
-
-const sectrAgent = new SectrAgent({ url: process.env.SECTR_AGUI_URL! });
-const agents = { default: sectrAgent };
-const runtime = new CopilotRuntime({ agents, runner: new SectrRunner({ agents }) });
-const handler = createCopilotRuntimeHandler({ runtime, basePath: "/api/copilotkit" });
-
-export const GET = handler;
-export const POST = handler;
-```
-
-To serve several agents from one CopilotKit app, give each its own `agentId`
-in the Runtime's agents map. The
-[`sectr-copilotkit-starter`](https://github.com/sectr-dev/sectr-copilotkit-starter)
-does this with the OpenAI Agents SDK and LangGraph versions of its support
-agent:
-
-```ts
-const agents = {
-  default: new SectrAgent({ url: "https://api.sectr.dev/ag-ui/support-agent/chat_oai" }),
-  langgraph: new SectrAgent({ url: "https://api.sectr.dev/ag-ui/support-agent/chat_langgraph" }),
-};
-const runtime = new CopilotRuntime({ agents, runner: new SectrRunner({ agents }) });
-```
-
-and pick one in the chat:
-
-```tsx
-<CopilotSidebar agentId="langgraph" threadId={threadId} />
-```
-
-**2. The agent and the runner** — [`@sectr/copilotkit`](https://www.npmjs.com/package/@sectr/copilotkit),
-which works with the CopilotKit packages your app already has:
+**1. Install the package** — [`@sectr/copilotkit`](https://www.npmjs.com/package/@sectr/copilotkit)
+provides `SectrAgent` and `SectrRunner`, and works with the CopilotKit packages
+your app already has:
 
 ```sh
 npm install @sectr/copilotkit
 ```
 
-The Runtime's runner decides where conversations live.
-CopilotKit's default keeps a copy of every thread in your server's memory and
-serves it back to any caller, with no auth check. `SectrRunner` keeps nothing:
-runs stream from Sectr, and a reloading page reconnects to Sectr through the
-`SectrAgent` (an AG-UI `HttpAgent` that can also reconnect), always with
-the user's token. Your server stays stateless (deploy it anywhere: serverless,
-several instances, restarts), and the only copy of a conversation is the one
-Sectr shows only to its owner.
+**2. The Copilot Runtime route** — CopilotKit's
+[Copilot Runtime](https://docs.copilotkit.ai/backend/copilot-runtime), with a
+`SectrAgent` pointing at your agent instead of CopilotKit's built-in one, and
+`SectrRunner` in place of CopilotKit's default runner:
 
-**3. A token-mint route** — the only trusted piece of backend. It asserts
-which of *your* users is chatting and gets back a user token (`sks_…`) that
+```ts
+// app/api/copilotkit/[[...slug]]/route.ts
+import {
+    CopilotRuntime,
+    createCopilotRuntimeHandler,
+} from "@copilotkit/runtime/v2";
+import { SectrAgent, SectrRunner } from "@sectr/copilotkit";
+
+const sectrAgent = new SectrAgent({ url: process.env.SECTR_AGUI_URL! });
+const agents = { default: sectrAgent };
+const runtime = new CopilotRuntime({
+    agents,
+    runner: new SectrRunner({ agents }),
+});
+const handler = createCopilotRuntimeHandler({
+    runtime,
+    basePath: "/api/copilotkit",
+});
+
+export const GET = handler;
+export const POST = handler;
+```
+
+The runner decides where conversations live. CopilotKit's default keeps them
+in your server's memory; `SectrRunner` keeps them on Sectr, so your server is
+stateless: deploy it anywhere, on serverless or several instances.
+
+To serve several agents from one CopilotKit app, give each its own `agentId`
+in the Runtime's agents map and set the `agentId` property on your `CopilotSidebar`. The
+[`sectr-copilotkit-starter`](https://github.com/sectr-dev/sectr-copilotkit-starter)
+does this with the OpenAI Agents SDK and LangGraph versions of its agent.
+
+**3. A token-mint route** — It translates the notion of *your* users into Sectr user tokens.
+It mints a user token (`sks_…`) that
 can only see that user's conversations:
 
 ```ts
 // app/api/agent-token/route.ts
 const res = await fetch("https://api.sectr.dev/tokens", {
-  method: "POST",
-  headers: { Authorization: `Bearer ${process.env.SECTR_INVOCATION_KEY}`, "Content-Type": "application/json" },
-  body: JSON.stringify({ app: "support-agent", external_user_id: user.id }),
+    method: "POST",
+    headers: {
+        Authorization: `Bearer ${process.env.SECTR_INVOCATION_KEY}`,
+        "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ app: "my-agent", external_user_id: user.id }),
 });
 return Response.json({ token: (await res.json()).token });
 ```
@@ -150,18 +91,28 @@ CopilotKit as a header. The Runtime forwards `Authorization` to Sectr by
 default:
 
 ```tsx
-<CopilotKitProvider runtimeUrl="/api/copilotkit" headers={{ Authorization: `Bearer ${token}` }}>
-  <CopilotSidebar threadId={threadId} />
+<CopilotKitProvider
+    runtimeUrl="/api/copilotkit"
+    headers={{ Authorization: `Bearer ${token}` }}
+>
+    <CopilotSidebar threadId={threadId} />
 </CopilotKitProvider>
 ```
 
-Sectr never authenticates your end users — your app's login stays the source
+Sectr never authenticates your end users: your app's login stays the source
 of truth, and `external_user_id` is whatever id it uses. Tokens last 24 hours
-and the starter mints one on every page load, so the only tab that outlives
+and the scaffold mints one on every page load, so the only tab that outlives
 its token is one left open for a day; its runs then fail with `401` until
 it reloads (or your app re-mints). Under `sectr dev` there
-is no auth: the starter skips minting when no invocation key is set. See
+is no auth: the scaffold skips minting when no invocation key is set. See
 [authentication](../api/auth.md#user-token-sks_) for the token rules.
+
+The app needs two server-side variables wherever it runs:
+
+- `SECTR_AGUI_URL`: the AG-UI URL `sectr dev` or `sectr deploy` printed.
+- `SECTR_INVOCATION_KEY`: your project's invocation key. Create one from
+  **Connect your frontend** on the project's page in the dashboard, or under
+  **Settings → API keys**. Leave it unset under `sectr dev`.
 
 > **Never put the invocation key in the browser**: It can read every user's conversations and create sessions without limit.
 > Mint user tokens instead. (A single-user or internal tool may use the
@@ -172,7 +123,7 @@ is no auth: the starter skips minting when no invocation key is set. See
 
 AG-UI's `threadId` **is** the Sectr session id, and it must be a UUID
 (CopilotKit's are). A run on a new `threadId` starts a session owned by the
-token's user; later runs on it continue that conversation. The starter keeps
+token's user; later runs on it continue that conversation. The scaffold keeps
 the thread id in the URL (`?thread=…`), so a reload lands back in the same
 conversation.
 
@@ -189,14 +140,14 @@ renders it, and resolving it starts the resume run:
 
 ```tsx
 useInterrupt({
-  enabled: ({ value }) => value?.reason === "tool_approval",
-  render: ({ interrupt, resolve }) => (
-    <div>
-      Run <code>{interrupt?.metadata?.toolName}</code>?
-      <button onClick={() => resolve(true)}>Approve</button>
-      <button onClick={() => resolve(false)}>Deny</button>
-    </div>
-  ),
+    enabled: ({ value }) => value?.reason === "tool_approval",
+    render: ({ interrupt, resolve }) => (
+        <div>
+            Run <code>{interrupt?.metadata?.toolName}</code>?
+            <button onClick={() => resolve(true)}>Approve</button>
+            <button onClick={() => resolve(false)}>Deny</button>
+        </div>
+    ),
 });
 ```
 
@@ -236,13 +187,13 @@ itself. Handy for prototypes. A reloaded page still reattaches: the
 import { SectrAgent } from "@sectr/copilotkit";
 
 const agent = new SectrAgent({
-  url: "https://api.sectr.dev/ag-ui/support-agent/chat",
-  headers: { Authorization: `Bearer ${token}` },
+    url: "https://api.sectr.dev/ag-ui/my-agent/chat",
+    headers: { Authorization: `Bearer ${token}` },
 });
 
 <CopilotKitProvider selfManagedAgents={{ default: agent }}>
-  <CopilotChat threadId={threadId} />
-</CopilotKitProvider>
+    <CopilotChat threadId={threadId} />
+</CopilotKitProvider>;
 ```
 
 Use `SectrAgent`, not `@ag-ui/client`'s plain `HttpAgent`: `HttpAgent`
