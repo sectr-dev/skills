@@ -89,6 +89,50 @@ Options:
 
 ```
 
+### `sectr send`
+
+```text
+Send a message / decide an approval through the running `sectr dev` gateway (a thin client — it never starts the engine)
+
+Usage: sectr send [OPTIONS] [MESSAGE]
+
+Arguments:
+  [MESSAGE]  The message (positional). Omitted: prompted on the terminal, or read from all of stdin when piped
+
+Options:
+      --path <PATH>        Project directory (must contain a `.agent/dev.json` from `sectr dev`) [default: .]
+      --session <SESSION>  Existing session (a plain `sectr send "msg"` creates one)
+      --approve            Approve the session's pending tool call (resumes the turn)
+      --deny               Deny the session's pending tool call (resumes with the rejection)
+      --no-tail            Don't follow the turn's output — send, print the session id, exit
+      --json               Raw event envelopes (one JSON per line) instead of the human renderer
+      --cloud              CLOUD mode (WS J): talk to a sectr-server instead of the local dev gateway. Requires --app; auth/server come from --api/--key, the env, or `sectr auth login` (shared resolution)
+      --app <APP>          The app slug (cloud mode) — as `sectr deploy` created it
+      --route <ROUTE>      Route path (cloud mode). Default: the app's first route
+      --api <API>          Server base (cloud mode). Defaults through `sectr auth login`
+      --key <KEY>          Platform key (cloud mode). Defaults through `sectr auth login`
+  -h, --help               Print help
+
+```
+
+### `sectr tail`
+
+```text
+Follow a session's journal (never stops until ctrl-c)
+
+Usage: sectr tail [OPTIONS] --session <SESSION>
+
+Options:
+      --path <PATH>        Project directory (must contain a `.agent/dev.json` from `sectr dev`) [default: .]
+      --session <SESSION>  Session to follow (all-sessions tail is future work)
+      --cloud              CLOUD mode (WS J): follow a session on a sectr-server (auth/server from --api/--key, the env, or `sectr auth login`)
+      --api <API>          Server base (cloud mode). Defaults through `sectr auth login`
+      --key <KEY>          Platform key (cloud mode). Defaults through `sectr auth login`
+      --json               Raw event envelopes (one JSON per line) instead of the human renderer
+  -h, --help               Print help
+
+```
+
 ## Sectr Cloud Secrets Management
 
 ### `sectr secrets set`

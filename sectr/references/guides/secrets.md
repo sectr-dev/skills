@@ -1,8 +1,8 @@
 # Secrets
 
 Agents need provider keys, database URLs, internal API tokens. Sectr keeps
-them in a **write-only** store: values can be set and removed but never read
-back — not by the CLI, not by the dashboard, not by the API. The runner
+them in a write-only store: values can be set and removed but never read
+back: not by the CLI, not by the dashboard, not by the API. Only the isolated agent runner
 receives them as environment variables at spawn time.
 
 ## Managing secrets
@@ -29,7 +29,7 @@ Auth and server base come from [`sectr auth login`](https://docs.sectr.dev/getti
 
 ## Reaching your agent code
 
-Setting a secret isn't enough — declare the variable name on your `AgentApp`:
+Setting a secret isn't enough, you also must declare the variable name on your `AgentApp`:
 
 ```python
 app = AgentApp(name="support-agent", env=["OPENROUTER_API_KEY"])
@@ -40,10 +40,4 @@ these names from the store. Names without a stored value simply
 arrive unset; values never pass through the manifest itself.
 
 For **local** dev, secrets come from the project's `.env` file instead:
-same names, no cloud store needed. That's why the
-scaffold ships `.env.example`.
-
-> **Write-only by design**: The dashboard and API list secret *names* (with creation timestamps) but
-> expose no value, no prefix, no hash to compare against. Rotate freely —
-> `set` atomically replaces the value; the next spawned runner picks it up
-> (in-flight sessions keep the env they started with).
+same names, no cloud store needed.

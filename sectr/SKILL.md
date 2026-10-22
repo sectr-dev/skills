@@ -126,42 +126,25 @@ sectr init my-agent
 
 `sectr init` asks two things:
 
-- **The framework:** the OpenAI Agents SDK, LangGraph or Pydantic AI. Each is
-  the same support agent at the same `/chat` path, with the same file names;
-  see [using the OpenAI Agents SDK](references/getting-started/openai-agents.md),
-  [using LangGraph](references/getting-started/langgraph.md) and
-  [using Pydantic AI](references/getting-started/pydantic-ai.md).
+- **The framework:** which agent framework to scaffold for: currently OpenAI Agents SDK, LangGraph or Pydantic AI.
 - **A chat frontend:** none, or a CopilotKit chat app (Next.js, needs
-  Node 20+) already wired to your agent.
+  Node 20+) wired to the new agent.
 
-To skip the questions, pass them as flags: `sectr init my-agent --template
-openai-agents` (or `langgraph`, `pydantic-ai`), plus `--frontend copilotkit`
-for the chat app.
-
-Without a frontend, this generates:
+This generates:
 
 ```text
 my-agent/
-├── sectr.toml     # <-- the Sectr manifest
-├── app.py         # <-- your agent, and the line that serves it
-├── tools.py       # its tools
-├── fake.py        # a mock model, used when no API key is set
-├── pyproject.toml
-├── .env.example   # copy to .env to set OPENAI_API_KEY
-└── .gitignore
-```
-
-With the CopilotKit frontend, the Next.js app is at the root and the agent
-(the same files as above) is in `agent/`. Run `sectr dev` and `sectr deploy`
-from `agent/`; the generated `README.md` covers the rest.
-
-```text
-my-agent/
-├── agent/         # <-- the agent, as above
-├── app/           # Next.js pages, the Copilot Runtime and the token route
+├── agent/
+│   ├── sectr.toml        # the Sectr manifest
+│   ├── app.py            # your agent, and the line that serves it
+│   ├── tools.py          # the agent's tools
+│   ├── fake.py           # a mock model, used when no API key is set
+│   ├── pyproject.toml
+│   └── .env.example      # copy to .env to set OPENAI_API_KEY
+├── app/                  # Next.js pages, the Copilot Runtime and the token route
 ├── proxy.ts
 ├── package.json
-├── .env.development  # points the chat at `sectr dev`
+├── .env.development      # points the chat at `sectr dev`
 └── README.md
 ```
 
@@ -170,6 +153,7 @@ my-agent/
 `sectr.toml` tells Sectr what your project is:
 
 ```toml
+# sectr.toml
 [app]
 name = "my-agent"
 
@@ -192,10 +176,12 @@ and `[dev] port`, to [pin the local port](references/guides/local-dev.md#ports).
 through an `AgentApp`, through the adapter for its framework:
 
 ```python
+# app.py
 from sectr import AgentApp
 
 app = AgentApp(name="my-agent", env=["OPENAI_API_KEY"])
-app.add_route("/chat", openai_agents(agent))  # or langgraph(graph), pydantic_ai(agent)
+app.add_route("/chat", openai_agents(agent))
+# or langgraph(graph), pydantic_ai(agent)
 ```
 
 - **Each agent has its own path.** A project can have several agents, each served at a path like `/chat`.
@@ -204,12 +190,12 @@ app.add_route("/chat", openai_agents(agent))  # or langgraph(graph), pydantic_ai
   [secrets](references/guides/secrets.md)).
 - **The adapter** maps your framework's streamed output and approval requests
   onto Sectr's session events. It's the only Sectr-specific line: the agent
-  itself is the code you'd write anyway.
+  itself is the code you already write for that framework.
 
 Notice what's *absent*: no session handling, no streaming plumbing, no state
 management, no database to persist conversations. Sectr keeps every session
 in its journal, so a conversation survives restarts, redeploys and
-scale-to-zero.
+scales-to-zero.
 
 One rule applies whatever the framework: **your module must import cleanly
 with no secrets set.** `sectr dev` and `sectr deploy` import your module to find
@@ -220,24 +206,47 @@ first run needs no keys at all.
 
 ### Run it locally
 
-To use the real model, `cp .env.example .env` and put your `OPENAI_API_KEY`
-in `.env`. Without it, the mock model answers. Then start the local dev
-server:
+From the `agent/` directory, to use the real model locally, `cp .env.example .env`
+and put your `OPENAI_API_KEY` in `.env`. Without it, the mock model answers.
+Then start the local dev server:
 
 ```sh
-# cd my-agent   (if not already there)
-sectr dev       # Opens up a live dashboard for local dev server
+cd my-agent/agent   # if not already there
+sectr dev           # Opens up a live dashboard for local dev server
 ```
 
-This opens a live playground, where you can chat with your agent, watch its
-actions, and iterate on its behavior:
+This opens the Sectr playground, the developer's view of the agent: chat with
+it, watch its actions, and debug its behavior:
 
 ![Chat Playground in the dashboard](https://docs.sectr.dev/screenshots/chat.png)
+
+#### Try the chat frontend
+
+The playground is for the developer. End users talk to the agent through the
+app's own frontend: here, the CopilotKit chat that `sectr init` scaffolded. Its packages are
+already installed, and `.env.development` already points it at `sectr dev`.
+Start it in a second terminal:
+
+```sh
+cd my-agent
+npm run dev
+```
+
+Open [localhost:3000](http://localhost:3000) and try:
+
+1. **Chat:** "Where is order 123?"
+2. **Approve:** "Please refund it." The agent pauses on the gated `refund`
+   tool. Approve or deny it in the chat.
+3. **Reload:** the conversation lives on Sectr, so a reload picks it back up,
+   approvals included.
+
+If `sectr dev` picked a port other than 8420, put the URL it printed in
+`my-agent/.env.local` as `SECTR_AGUI_URL=<that URL>`.
 
 ### Deploy your agent
 
 To move your agent from your laptop to the cloud, run `sectr deploy` from
-your project directory:
+the `agent/` directory:
 
 ```sh
 $ sectr deploy
@@ -249,16 +258,14 @@ deployment 01a0d532-d771-7563-96bd-56f40cb28b2b: version 1 — building…
 🔌 connect via AG-UI at: https://api.sectr.dev/ag-ui/my-agent/chat
 ```
 
-This builds your agent in the cloud, finds its agents, and serves each as a
+This just built your project in the cloud, found the agent, and assigned it a
 live HTTP endpoint. The dashboard URL shows the deployed project. The last line
-is the agent's [AG-UI](https://docs.ag-ui.com) endpoint, what a chat frontend
-connects to.
+is the agent's [AG-UI](https://docs.ag-ui.com) endpoint, which your chat
+frontend connects to.
 
-Each `sectr deploy` makes a new version of the project. New sessions run on the
+Each `sectr deploy` makes a new version (deployment) of the project. New sessions run on the
 newest version that built successfully; a session already under way keeps
-the version it started on, so a deploy never interrupts a conversation. To
-roll back, use **Rollback to this deployment** on the project's page in the
-dashboard.
+the version it started on, so a deploy never interrupts a conversation.
 
 Then give the deployed project its key, and chat with it:
 
@@ -266,7 +273,25 @@ Then give the deployed project its key, and chat with it:
 sectr secrets set OPENAI_API_KEY
 ```
 
-To give the deployed agent a chat UI, see [Connecting your frontend](references/getting-started/connecting-frontend.md): it puts a CopilotKit chat on it, approvals included. (A project scaffolded with `--frontend copilotkit` already has one: see its `README.md`.)
+#### Connect the chat to the deployed agent
+
+The chat app is still talking to `sectr dev`. To point it at the deployed
+agent, the frontend's `.env.local` (in `my-agent/`, next to `package.json`)
+needs two variables:
+
+- `SECTR_AGUI_URL`: the AG-UI URL `sectr deploy` printed
+  (`🔌 connect via AG-UI at: …`). Set this one yourself.
+- `SECTR_INVOCATION_KEY`: an invocation key, which the app's server uses to
+  mint a token for each user. **Don't create or handle this key yourself.**
+  Ask the user to create one in the dashboard (open the project, then
+  **Connect your frontend → CopilotKit via AG-UI → Create invocation key**,
+  or **Settings → API keys**) and add it to `.env.local` as
+  `SECTR_INVOCATION_KEY` themselves, without pasting it into the
+  conversation.
+
+Then restart `npm run dev`: the same chat runs against the deployed agent.
+To ship the chat app, deploy the Next.js app anywhere Node runs with both
+variables set (see `references/getting-started/connecting-frontend.md`).
 
 ## Defining Gated Tools
 
@@ -384,6 +409,32 @@ Sectr hands the list to your runner as the `SECTR_APPROVAL_POLICY`
 environment variable, which the SDK reads. Don't set that variable yourself:
 `approval_tools` is the only place to set the policy.
 
+## Running and debugging an agent headlessly
+
+Test an agent you write yourself, from the terminal: no browser or
+dashboard needed. Run these from the agent's project directory (the one
+with `sectr.toml`).
+
+1. **Start the local engine** in the background: `sectr dev --no-open`.
+   It keeps running and reloads the agent code on the next turn, so leave
+   it up while you edit. If its port is busy it moves to the next free one
+   and says so; `sectr send` and `sectr tail` find it either way.
+2. **Send a message:** `sectr send "Where is order 123?"`. It prints
+   `session: <id>`, then follows the turn until it ends or pauses on an
+   approval. Add `--json` for the raw event envelopes, one per line.
+3. **Continue the conversation:** `sectr send "Please refund it." --session <id>`.
+4. **Decide a pending approval:** `sectr send --session <id> --approve`
+   (or `--deny`). The turn resumes, and `sectr send` follows it.
+5. **Watch a session's whole journal:** `sectr tail --session <id>`
+   (`--json` works here too). It never exits on its own, so run it in the
+   background or with a timeout.
+
+Details: `references/guides/local-dev.md` (the dev loop, and
+[ports](references/guides/local-dev.md#ports)), and the CLI reference for
+[`sectr dev`](references/cli.md#sectr-dev),
+[`sectr send`](references/cli.md#sectr-send) and
+[`sectr tail`](references/cli.md#sectr-tail).
+
 ## Reference
 
 Deeper material lives in `references/`, one file per docs page:
@@ -411,7 +462,7 @@ Deeper material lives in `references/`, one file per docs page:
 | **Pydantic AI adapter**: sectr.adapters.pydantic_ai — serve a Pydantic AI agent: its signature, behavior and limits. | references/sdk/adapters/pydantic-ai.md |
 | **AgentApp**: The agent registry and manifest source — the one sectr object your project exposes. | references/sdk/app.md |
 | **SessionContext**: The argument of a handler without a framework: the conversation, why the turn started, and running tools. | references/sdk/no-framework/context.md |
-| **No framework**: Write the agent loop yourself: a handler that reads the conversation, calls the model, and yields the events Sectr journals. | references/sdk/no-framework/index.md |
+| **Without a framework**: Write the agent loop yourself: a handler that reads the conversation, calls the model, and yields the events Sectr journals. | references/sdk/no-framework/index.md |
 | **Tools**: sectr.tools: tools from plain functions, for agents without a framework and for LangGraph. | references/sdk/tools.md |
 
 The OpenAPI spec is large. Look up what you need rather than reading it whole: `jq '.paths | keys' references/api/openapi.json` lists the endpoints, `jq '.paths["/sessions/{sessionId}/approval"].post' references/api/openapi.json` shows one, and `jq '.components.schemas.ApprovalDecision' references/api/openapi.json` resolves a `$ref` it names.
