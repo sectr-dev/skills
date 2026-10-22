@@ -32,7 +32,7 @@ can create sessions and read, stream, and talk to **every** session of the proje
 curl -X POST https://api.sectr.dev/sessions \
   -H "Authorization: Bearer $SECTR_INVOCATION_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"app": "support-agent", "route": "/chat", "input": {"message": "hi"}}'
+  -d '{"app": "support-agent", "route": "/chat", "input": "hi"}'
 ```
 
 A leaked invocation key is contained to its project: it can't read other projects'

@@ -10,14 +10,10 @@ rehydrated transcript plus the polymorphic reason that started it.
 The reason is polymorphic; these sugars raise `TypeError` on the wrong kind
 so misuse fails loudly:
 
-- **`ctx.input`** — the user's message payload. Only on turns whose reason
-  is `user_message`.
+- **`ctx.input`** — the user's message text (`str`). Only on turns whose
+  reason is `user_message`.
 - **`ctx.decision`** — the approval decision, `{"approved": bool, "approver"?:
   str}`. Only on turns whose reason is `approval_decision`.
-
-> **Note**: The input is opaque JSON: the console sends `{"message": …}`, your API
-> clients may send anything. It lands in the journal inside the invocation's
-> `INVOCATION_STARTED` and comes back out through `ctx.input` unchanged.
 
 ## `ctx.messages` — the conversation fold
 

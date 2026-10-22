@@ -42,8 +42,8 @@ curl -N https://api.sectr.dev/ag-ui/support-agent/chat \
   a UUID. A new `threadId` creates the session, owned by the user token's end
   user. Later runs on it continue the conversation.
 - **The trailing message is the input.** It must be `role: "user"`; its
-  `content` (a string or content parts) is what the agent receives. Empty
-  content (only whitespace, or no parts) is a `400`.
+  `content` must be a string, and is what the agent receives. Content parts
+  are a `400`, as is empty content (only whitespace).
 - **The journal is the history.** On an existing thread, earlier `messages`
   are ignored, and the stream opens with a `MESSAGES_SNAPSHOT` of the real
   conversation, tool calls and results included. A new thread must start

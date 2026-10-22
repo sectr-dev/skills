@@ -10,7 +10,7 @@ Both verbs schedule work and return immediately — output arrives on the
 curl -X POST https://api.sectr.dev/sessions \
   -H "Authorization: Bearer $SECTR_INVOCATION_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"app": "support-agent", "route": "/chat", "input": {"message": "Where is order 123?"}}'
+  -d '{"app": "support-agent", "route": "/chat", "input": "Where is order 123?"}'
 ```
 
 `201` with the session id:
@@ -22,12 +22,10 @@ curl -X POST https://api.sectr.dev/sessions \
 - `app` — the project slug (as `sectr deploy` created it) or its id;
 - `route` — which agent handles the conversation, by its path (e.g. `/chat`;
   the project's agents are in `GET /apps/{id}`);
-- `input` — **opaque JSON**, yours to define; it is journaled verbatim and
-  arrives in the agent as `ctx.input`. The dashboard sends
-  `{"message": "…"}` — any shape works if your agent reads it. It can't be
-  empty: a string of only whitespace, or an empty list, is a **400** (on
-  follow-up turns too), since some model providers reject an empty user
-  message.
+- `input` — the user's message text, a string. It is journaled verbatim and
+  arrives in the agent as `ctx.input`. Anything else is a **400**: an object,
+  a list of content parts, a number, or a string of only whitespace (on
+  follow-up turns too). Some model providers reject an empty user message.
 
 Creating the session starts executing your agent immediately.
 
@@ -39,7 +37,7 @@ Full schema: `POST /sessions` (look it up with `jq '.paths["/sessions"].post' re
 curl -X POST https://api.sectr.dev/sessions/$SESSION_ID/input \
   -H "Authorization: Bearer $SECTR_INVOCATION_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"input": {"message": "and a refund please"}}'
+  -d '{"input": "and a refund please"}'
 ```
 
 `202` — the turn is scheduled. **409** means the session isn't accepting

@@ -59,7 +59,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/EmptyInput"
+            "$ref": "#/components/responses/InvalidInput"
           },
           "404": {
             "description": "unknown app, no active deployment, or a route the deployment doesn't serve"
@@ -341,7 +341,7 @@
             "description": "turn scheduled"
           },
           "400": {
-            "$ref": "#/components/responses/EmptyInput"
+            "$ref": "#/components/responses/InvalidInput"
           },
           "404": {
             "description": "unknown session"
@@ -484,7 +484,7 @@
             }
           },
           "400": {
-            "description": "malformed `RunAgentInput`; `protocolVersion` not 1.x; `threadId` not a UUID; trailing message not `role: user`, or empty (only whitespace, or no content parts); history on a new thread",
+            "description": "malformed `RunAgentInput`; `protocolVersion` not 1.x; `threadId` not a UUID; trailing message not `role: user`, its `content` not a string (content parts), or only whitespace; history on a new thread",
             "content": {
               "application/json": {
                 "schema": {
@@ -1522,7 +1522,7 @@
           },
           "messages": {
             "type": "array",
-            "description": "AG-UI messages. The trailing one must be `role: user` (its `content` becomes the turn's input), except on a resume run. On a new thread nothing but `system` / `developer` messages may precede it; on an existing thread earlier messages are ignored (the journal is the history).",
+            "description": "AG-UI messages. The trailing one must be `role: user` (its `content`, which must be a string, becomes the turn's input; content parts are a 400), except on a resume run. On a new thread nothing but `system` / `developer` messages may precede it; on an existing thread earlier messages are ignored (the journal is the history).",
             "items": {
               "type": "object"
             }
@@ -2496,7 +2496,9 @@
                     "const": "user_message"
                   },
                   "input": {
-                    "description": "The user's message — opaque JSON, exactly as submitted. Starts a turn (first or follow-up)."
+                    "type": "string",
+                    "pattern": "\\S",
+                    "description": "The user's message text. Starts a turn (first or follow-up)."
                   }
                 }
               },
@@ -2675,7 +2677,9 @@
             "description": "agent route, e.g. /customer-support"
           },
           "input": {
-            "description": "Opaque JSON, journaled in INVOCATION_STARTED.reason.input. Not empty: a string of only whitespace, or an empty list, is a 400."
+            "type": "string",
+            "pattern": "\\S",
+            "description": "The user's message text, journaled verbatim as INVOCATION_STARTED.reason.input. A non-string, or a string of only whitespace, is a 400."
           }
         }
       },
@@ -2698,7 +2702,9 @@
         ],
         "properties": {
           "input": {
-            "description": "Opaque JSON, journaled in INVOCATION_STARTED.reason.input. Not empty: a string of only whitespace, or an empty list, is a 400."
+            "type": "string",
+            "pattern": "\\S",
+            "description": "The user's message text, journaled verbatim as INVOCATION_STARTED.reason.input. A non-string, or a string of only whitespace, is a 400."
           }
         }
       },
@@ -2754,8 +2760,8 @@
           }
         }
       },
-      "EmptyInput": {
-        "description": "`input` is empty: a string of only whitespace (or no characters), or an empty list. Nothing is journaled; some framework and provider pairs can't send an empty user message.",
+      "InvalidInput": {
+        "description": "`input` isn't a string, or is only whitespace. Nothing is journaled.",
         "content": {
           "application/json": {
             "schema": {
