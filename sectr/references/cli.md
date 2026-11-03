@@ -106,7 +106,7 @@ Options:
       --deny               Deny the session's pending tool call (resumes with the rejection)
       --no-tail            Don't follow the turn's output — send, print the session id, exit
       --json               Raw event envelopes (one JSON per line) instead of the human renderer
-      --cloud              CLOUD mode (WS J): talk to a sectr-server instead of the local dev gateway. Requires --app; auth/server come from --api/--key, the env, or `sectr auth login` (shared resolution)
+      --cloud              CLOUD mode: talk to a sectr-server instead of the local dev gateway. Requires --app; auth/server come from --api/--key, the env, or `sectr auth login` (shared resolution)
       --app <APP>          The app slug (cloud mode) — as `sectr deploy` created it
       --route <ROUTE>      Route path (cloud mode). Default: the app's first route
       --api <API>          Server base (cloud mode). Defaults through `sectr auth login`
@@ -125,7 +125,7 @@ Usage: sectr tail [OPTIONS] --session <SESSION>
 Options:
       --path <PATH>        Project directory (must contain a `.agent/dev.json` from `sectr dev`) [default: .]
       --session <SESSION>  Session to follow (all-sessions tail is future work)
-      --cloud              CLOUD mode (WS J): follow a session on a sectr-server (auth/server from --api/--key, the env, or `sectr auth login`)
+      --cloud              CLOUD mode: follow a session on a sectr-server (auth/server from --api/--key, the env, or `sectr auth login`)
       --api <API>          Server base (cloud mode). Defaults through `sectr auth login`
       --key <KEY>          Platform key (cloud mode). Defaults through `sectr auth login`
       --json               Raw event envelopes (one JSON per line) instead of the human renderer
