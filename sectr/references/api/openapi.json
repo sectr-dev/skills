@@ -1632,7 +1632,8 @@
         "type": "object",
         "description": "MVP: no user records exist (paste-a-platform-key login, decided 2026-09-12), so `user` is absent; `org` is the authenticated principal's org.",
         "required": [
-          "org"
+          "org",
+          "dashboard_url"
         ],
         "properties": {
           "user": {
@@ -1671,6 +1672,11 @@
                 "type": "string"
               }
             }
+          },
+          "dashboard_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The origin of this server's dashboard, with no trailing slash. Clients build links to it from this."
           }
         }
       },

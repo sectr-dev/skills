@@ -6,6 +6,16 @@ workflows behind the commands, get setup with
 
 ## Authenticating the CLI
 
+Log in once and every other command follows that login. If you [run your own server](guides/self-hosting.md), log in with `--api` the first time:
+
+```bash
+sectr auth login --api http://localhost:8080
+```
+
+- **`sectr auth login`** picks its server from `--api`, then `SECTR_API_URL`, then the server you last logged in to, then Sectr's hosted server.
+- **`sectr deploy`, `sectr secrets`, `sectr send --cloud` and `sectr tail --cloud`** pick theirs from `--api`, then `SECTR_API_URL`, then your login, and print `server: <url>` when they start.
+- **Your saved key only goes to the server you logged in to.** If a command resolves to a different server, it stops and tells you to log in there. A key you pass with `--key` or `SECTR_PLATFORM_KEY` is always used as given.
+
 ### `sectr auth login`
 
 ```text
@@ -16,7 +26,7 @@ Usage: sectr auth login [OPTIONS]
 Options:
       --with-key    Read the platform key from a hidden prompt or stdin instead of using the browser
       --no-browser  Print the approval link without trying to open a browser (remote machines, coding agents)
-      --api <API>   The server base URL. Default: the public endpoint
+      --api <API>   The server base URL. Default: SECTR_API_URL, then the saved login's server, then the public endpoint
       --key <KEY>   Platform API key (`skp_…`). With `login`, stores that key instead of opening the browser
   -h, --help        Print help
 
@@ -30,7 +40,7 @@ Print the stored identity (org + server) after re-validating
 Usage: sectr auth whoami [OPTIONS]
 
 Options:
-      --api <API>  The server base URL. Default: the public endpoint
+      --api <API>  The server base URL. Default: SECTR_API_URL, then the saved login's server, then the public endpoint
       --key <KEY>  Platform API key (`skp_…`). With `login`, stores that key instead of opening the browser
   -h, --help       Print help
 
@@ -44,7 +54,7 @@ Forget the stored key (and revoke it, if the browser login made it)
 Usage: sectr auth logout [OPTIONS]
 
 Options:
-      --api <API>  The server base URL. Default: the public endpoint
+      --api <API>  The server base URL. Default: SECTR_API_URL, then the saved login's server, then the public endpoint
       --key <KEY>  Platform API key (`skp_…`). With `login`, stores that key instead of opening the browser
   -h, --help       Print help
 
@@ -74,6 +84,8 @@ Options:
 
 ### `sectr dev`
 
+`sectr dev` needs no server or login. It opens the dashboard from `--dashboard` or `SECTR_DASHBOARD_URL`, then your login's dashboard, then [app.sectr.dev](https://app.sectr.dev). Your agent and its data stay on your machine either way, because the browser talks directly to the local gateway.
+
 ```text
 Run the app locally end-to-end: SQLite journal, subprocess runner, gateway for clients. See `dev --help`
 
@@ -83,7 +95,7 @@ Options:
       --path <PATH>            Project directory (must contain sectr.toml) [default: .]
       --config <CONFIG>        Config file path (relative to --path) [default: sectr.toml]
       --no-open                Don't open the dashboard (CI / containers)
-      --dashboard <DASHBOARD>  Dashboard to open (the deployed console by default; point it at a local `next dev` when working on the dashboard itself) [env: SECTR_DASHBOARD_URL=] [default: https://app.sectr.dev]
+      --dashboard <DASHBOARD>  Dashboard to open. Default: the saved login's dashboard, else https://app.sectr.dev. Point it at a local `next dev` when working on the dashboard itself [env: SECTR_DASHBOARD_URL=]
       --port <PORT>            Gateway port. Default: the port this project used last, else 8420. A port given here is strict: if it's busy, `sectr dev` exits
   -h, --help                   Print help
 

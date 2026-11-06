@@ -447,6 +447,7 @@ Deeper material lives in `references/`, one file per docs page:
 | **Using Pydantic AI**: Serve a Pydantic AI agent on Sectr — streaming, native tool approvals and durable sessions, resumed from the journal alone. | references/getting-started/pydantic-ai.md |
 | **Local dev**: The sectr dev loop — local engine, gateway, dashboard, send/tail. | references/guides/local-dev.md |
 | **Secrets**: Write-only secrets for deployed agents — set, list, remove, and how they reach your code. | references/guides/secrets.md |
+| **Self-hosting**: Run all of Sectr on your own machine, with the journal, secrets, runners and builds all staying there. | references/guides/self-hosting.md |
 | **AG-UI endpoint**: Every deployed agent is an AG-UI 1.0 endpoint — run a turn with POST, reconnect with GET. Requests, events, approvals, auth and errors. | references/api/ag-ui.md |
 | **Approve or deny actions**: The approvals inbox endpoints — decide pending tool calls from your own frontend. | references/api/approvals.md |
 | **Authentication**: Platform keys, invocation keys and user tokens — which credential for which endpoint. | references/api/auth.md |
