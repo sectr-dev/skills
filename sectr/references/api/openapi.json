@@ -1233,6 +1233,118 @@
         }
       }
     },
+    "/endpoint-deployments": {
+      "post": {
+        "operationId": "createEndpointDeployment",
+        "summary": "Deploy an agent that runs on your own compute endpoint (no image build)",
+        "description": "Registers a deployment that runs on the customer's own serverless or containers: the runner base image's sidecar in serve mode (`sectr-worker --serve`, see `schema/serve.schema.json`). For each turn the server POSTs a wake to the compute endpoint, and the sidecar there dials back to ingest. First deploy for an unknown app name creates the app. The server probes the compute endpoint (`GET /` must identify a serve-mode sidecar) before answering; then, off-request, it asks the compute endpoint for its manifest (`POST /manifest`, which first dials this server with a single-use registration token) and activates the deployment, or fails it with an `error`. Off unless the server sets `SECTR_ENDPOINT_INGEST_URL`. Auth: platform API key.",
+        "security": [
+          {
+            "platformApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "manifest",
+                  "endpoint_url"
+                ],
+                "properties": {
+                  "manifest": {
+                    "type": "string",
+                    "description": "sectr.toml contents"
+                  },
+                  "endpoint_url": {
+                    "type": "string",
+                    "description": "The compute endpoint's base URL (a Lambda function URL, a Google Cloud Run service URL, ...), with no query. `https` only, with no username, password or fragment, unless the server sets `SECTR_ENDPOINT_ALLOW_PRIVATE`. The server sends `<endpoint_url>/wake` and `<endpoint_url>/manifest`."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted: the compute endpoint answered as a serve-mode sidecar. The body is the deployment row in `building` state, plus `warnings` when the compute endpoint's sidecar version differs from the server's. Poll `GET /apps/{appId}/deployments` until `status` reaches `active` or `failed` (a `failed` row carries its `error`: the compute endpoint's sidecar dialed another server, couldn't reach this one, or the manifest import failed in the image).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Deployment"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body isn't the JSON object above, or `sectr.toml` is invalid (not TOML, missing or empty `agent.entry`)."
+          },
+          "422": {
+            "description": "Rejected: the server doesn't accept endpoint deployments (`SECTR_ENDPOINT_INGEST_URL` unset), the URL breaks the rules above or resolves to a private address, the compute endpoint isn't a Sectr sidecar in serve mode (the probe failed, answered an error, or answered something else), the app has a secret named `SECTR_APPROVAL_POLICY`, or the deploy was rejected server-side."
+          }
+        }
+      }
+    },
+    "/endpoint-deployments/config": {
+      "get": {
+        "operationId": "getEndpointDeploymentConfig",
+        "summary": "Whether endpoint deployments are on, and what the compute endpoint's image needs",
+        "description": "`ingest_url` is the value to set as `SECTR_INGEST_URL` in the compute endpoint's image: the only server its sidecar dials. `base_image` is the runner base image of this server's version, which the image builds `FROM` (`sectr init --endpoint` writes both). Auth: platform API key.",
+        "security": [
+          {
+            "platformApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "enabled",
+                    "ingest_url",
+                    "base_image"
+                  ],
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "ingest_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "base_image": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/deployments/{deploymentId}/activate": {
       "post": {
         "operationId": "activateDeployment",
@@ -1257,6 +1369,95 @@
           },
           "409": {
             "description": "Deployment not in a ready state — only `active` or `retired` rows (a resolved build) can be activated; `building` and `failed` targets are rejected."
+          }
+        }
+      }
+    },
+    "/deployments/{deploymentId}/wakes": {
+      "get": {
+        "operationId": "getDeploymentWakes",
+        "summary": "How a deployment's recent turns woke (compute endpoint health)",
+        "description": "Over the deployment's last `limit` turns, how many failed to wake its compute endpoint: the turn's first session error, before the session's next turn, starts with `endpoint wake failed:`. Other session errors (an agent that raised, a reclaimed lease) don't count. For a managed deployment `failed` is always 0. Auth: platform API key.",
+        "parameters": [
+          {
+            "name": "deploymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "turns",
+                    "failed",
+                    "latest_failure"
+                  ],
+                  "properties": {
+                    "turns": {
+                      "type": "integer",
+                      "description": "turns counted (at most `limit`)"
+                    },
+                    "failed": {
+                      "type": "integer",
+                      "description": "of those, the ones whose wake failed"
+                    },
+                    "latest_failure": {
+                      "description": "the newest wake failure among them",
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "message",
+                            "session_id",
+                            "created_at"
+                          ],
+                          "properties": {
+                            "message": {
+                              "type": "string"
+                            },
+                            "session_id": {
+                              "type": "string"
+                            },
+                            "created_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`limit` outside 1–100"
+          },
+          "404": {
+            "description": "unknown deployment"
           }
         }
       }
@@ -1783,7 +1984,8 @@
           "version",
           "status",
           "created_at",
-          "active"
+          "active",
+          "endpoint_url"
         ],
         "properties": {
           "id": {
@@ -1811,6 +2013,13 @@
           "active": {
             "type": "boolean",
             "description": "current deployment for new sessions"
+          },
+          "endpoint_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The customer's compute endpoint for an endpoint deployment, woken over HTTP for each turn; `null` for a Sectr Run deployment (Sectr builds and runs it)."
           }
         }
       },

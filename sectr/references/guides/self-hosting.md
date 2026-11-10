@@ -89,23 +89,27 @@ Whatever proxy you use, turn off response buffering and allow long-lived connect
 
 These go in `.env`. Apply changes with `docker compose up -d`.
 
-| Setting                              | Default                 | What it does                                                            |
-| ------------------------------------ | ----------------------- | ----------------------------------------------------------------------- |
-| `SECTR_VERSION`                      | Set by the release      | The version to run                                                      |
-| `SECTR_PUBLIC_API_URL`               | `http://localhost:8080` | How browsers and the CLI reach the server                               |
-| `SECTR_DASHBOARD_URL`                | `http://localhost:3000` | How browsers reach the dashboard. Used in links                         |
-| `SECTR_PG_URL`                       | Bundled Postgres        | The database. Must be a direct connection                               |
-| `COMPOSE_PROFILES`                   | `postgres`              | Remove `postgres` when you use your own database                        |
-| `SECTR_SECRETS_MASTER_KEY`           | Generated               | Encrypts secrets at rest. If you lose it, stored secrets can't be read  |
-| `SECTR_BOOTSTRAP_PLATFORM_KEY`       | Generated               | The first platform key                                                  |
-| `SECTR_MAX_CONCURRENT_TURNS`         | `10`                    | Turns running at once. Set it to fit the machine                        |
-| `SECTR_MAX_CONCURRENT_TURNS_PER_APP` | `0`                     | The same, per app. `0` turns it off                                     |
-| `SECTR_RUNNER_CPU_COUNT`             | `1`                     | CPUs per runner. May be fractional                                      |
-| `SECTR_RUNNER_MEMORY_MB`             | `1024`                  | Memory per runner                                                       |
-| `SECTR_RUNNER_TIMEOUT_SECS`          | `3600`                  | The longest a runner can live. A turn that hits this ends with an error |
-| `SECTR_SERVER_PORT`                  | `8080`                  | The server's published port, optionally with an address                 |
-| `SECTR_DASHBOARD_PORT`               | `3000`                  | The dashboard's published port, optionally with an address              |
-| `SECTR_DOCKER_SOCKET_PATH`           | `/var/run/docker.sock`  | The Docker socket, for rootless Docker                                  |
+| Setting                              | Default                 | What it does                                                                                                                                                                            |
+| ------------------------------------ | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SECTR_VERSION`                      | Set by the release      | The version to run                                                                                                                                                                      |
+| `SECTR_PUBLIC_API_URL`               | `http://localhost:8080` | How browsers and the CLI reach the server                                                                                                                                               |
+| `SECTR_DASHBOARD_URL`                | `http://localhost:3000` | How browsers reach the dashboard. Used in links                                                                                                                                         |
+| `SECTR_PG_URL`                       | Bundled Postgres        | The database. Must be a direct connection                                                                                                                                               |
+| `COMPOSE_PROFILES`                   | `postgres`              | Remove `postgres` when you use your own database                                                                                                                                        |
+| `SECTR_SECRETS_MASTER_KEY`           | Generated               | Encrypts secrets at rest. If you lose it, stored secrets can't be read                                                                                                                  |
+| `SECTR_BOOTSTRAP_PLATFORM_KEY`       | Generated               | The first platform key                                                                                                                                                                  |
+| `SECTR_MAX_CONCURRENT_TURNS`         | `10`                    | Turns running at once. Set it to fit the machine                                                                                                                                        |
+| `SECTR_MAX_CONCURRENT_TURNS_PER_APP` | `0`                     | The same, per app. `0` turns it off                                                                                                                                                     |
+| `SECTR_RUNNER_CPU_COUNT`             | `1`                     | CPUs per runner. May be fractional                                                                                                                                                      |
+| `SECTR_RUNNER_MEMORY_MB`             | `1024`                  | Memory per runner                                                                                                                                                                       |
+| `SECTR_RUNNER_TIMEOUT_SECS`          | `3600`                  | The longest a runner can live. A turn that hits this ends with an error                                                                                                                 |
+| `SECTR_SERVER_PORT`                  | `8080`                  | The server's published port, optionally with an address                                                                                                                                 |
+| `SECTR_DASHBOARD_PORT`               | `3000`                  | The dashboard's published port, optionally with an address                                                                                                                              |
+| `SECTR_DOCKER_SOCKET_PATH`           | `/var/run/docker.sock`  | The Docker socket, for rootless Docker                                                                                                                                                  |
+| `SECTR_ENDPOINT_INGEST_URL`          | Unset                   | Turns on endpoint deployments: agents on your own serverless or containers. Set it to the server's ingest as those platforms reach it, for example `wss://api.sectr.example.com/ingest` |
+| `SECTR_ENDPOINT_ALLOW_PRIVATE`       | `false`                 | Allows endpoints on private addresses and plain `http`, for endpoints on your own network                                                                                               |
+| `SECTR_ENDPOINT_WAKE_DEADLINE_SECS`  | `60`                    | How long an endpoint has to start a turn, cold start included. 5 to 90                                                                                                                  |
+| `SECTR_ENDPOINT_TURN_TIMEOUT_SECS`   | `3600`                  | The longest the server holds a turn's request to an endpoint open                                                                                                                       |
 
 The defaults for `SECTR_MAX_CONCURRENT_TURNS` and the runner limits allow up to 10 CPUs and 10 GB at once, so lower them on a smaller machine. A turn that would go over the limit is refused, and a client can retry it.
 

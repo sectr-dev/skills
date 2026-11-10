@@ -13,7 +13,7 @@ sectr auth login --api http://localhost:8080
 ```
 
 - **`sectr auth login`** picks its server from `--api`, then `SECTR_API_URL`, then the server you last logged in to, then Sectr's hosted server.
-- **`sectr deploy`, `sectr secrets`, `sectr send --cloud` and `sectr tail --cloud`** pick theirs from `--api`, then `SECTR_API_URL`, then your login, and print `server: <url>` when they start.
+- **`sectr deploy`, `sectr init --endpoint`, `sectr secrets`, `sectr send --cloud` and `sectr tail --cloud`** pick theirs from `--api`, then `SECTR_API_URL`, then your login, and print `server: <url>` when they start.
 - **Your saved key only goes to the server you logged in to.** If a command resolves to a different server, it stops and tells you to log in there. A key you pass with `--key` or `SECTR_PLATFORM_KEY` is always used as given.
 
 ### `sectr auth login`
@@ -65,7 +65,7 @@ Options:
 ### `sectr init`
 
 ```text
-Scaffold a new agent project: framework and frontend pickers (or --template / --frontend), file emission, `uv sync`, and a smoke inspect. See `init --help`
+Scaffold a new agent project: framework, frontend and where-it-runs pickers (or --template / --frontend / --endpoint), file emission, `uv sync`, and a smoke inspect. `--endpoint` in an existing project adds the files to run it on your own platform. See `init --help`
 
 Usage: sectr init [OPTIONS] [NAME]
 
@@ -75,7 +75,10 @@ Arguments:
 Options:
       --template <TEMPLATE>  Agent framework: `openai-agents`, `langgraph` or `pydantic-ai`. Given → fully non-interactive (docs/CI). Omitted → interactive picker (needs a terminal)
       --frontend <FRONTEND>  Chat frontend: `none` (agent only) or `copilotkit` (a Next.js + CopilotKit app at the root, the agent in `agent/`; needs Node 20+). Omitted → `none` with --template, else an interactive picker
-      --force                Scaffold into a non-empty directory anyway
+      --endpoint <ENDPOINT>  Run it on your own platform: `lambda`, `cloud-run` or `container`. Adds a Dockerfile pinned to your server and `[deploy] endpoint` to sectr.toml; in an existing project (a sectr.toml here, no name), adds only those. Needs a server (`sectr auth login`, or --api). Omitted → Sectr Run with --template, else an interactive picker
+      --api <API>            The server whose base image and ingest URL a compute endpoint's Dockerfile pins (so only for a project on your own platform). Defaults through `sectr auth login` (or SECTR_API_URL)
+      --key <KEY>            Platform API key (`skp_…`) for that server (so only for a project on your own platform). Defaults through `sectr auth login` (or SECTR_PLATFORM_KEY)
+      --force                Scaffold into a non-empty directory anyway (and, with --endpoint, replace an existing Dockerfile and .dockerignore)
   -h, --help                 Print help
 
 ```
@@ -204,8 +207,10 @@ Options:
 
 ### `sectr deploy`
 
+`sectr deploy` packages the project and ships it to Sectr Run, which builds and runs it. With `[deploy] endpoint` in `sectr.toml`, it uploads nothing: your agent runs on your own AWS Lambda, Google Cloud Run or container platform (your compute endpoint), and this registers its URL. `sectr init --endpoint <platform>` sets a project up for it. See [Run it on your own compute](https://docs.sectr.dev/guides/your-own-compute/).
+
 ```text
-Ship the project to a server: package → upload → the server builds and activates. See `deploy --help`
+Ship the project to a server: package → upload → the server builds and activates. With `[deploy] endpoint` in sectr.toml, register your own compute endpoint instead. See `deploy --help`
 
 Usage: sectr deploy [OPTIONS]
 
@@ -214,7 +219,7 @@ Options:
       --config <CONFIG>              sectr.toml location relative to the project [default: sectr.toml]
       --api <API>                    The server base URL (`http(s)://host[:port]`). Defaults through `sectr auth login` (or SECTR_API_URL)
       --key <KEY>                    Platform API key (`skp_…`). Defaults through `sectr auth login` (or SECTR_PLATFORM_KEY)
-      --timeout-secs <TIMEOUT_SECS>  How long to wait for the server-side build to resolve, in seconds [default: 600]
+      --timeout-secs <TIMEOUT_SECS>  How long to wait for the server-side build (or your compute endpoint's registration) to resolve, in seconds [default: 600]
   -h, --help                         Print help
 
 ```
